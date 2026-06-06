@@ -11,19 +11,19 @@ class MoomooBroker:
         self.connected = False
 
     def _format_code(self, symbol):
-        """Convert ticker to Futu format"""
+        """Convert ticker to correct Futu format"""
         symbol = symbol.upper()
         
         # US Stocks
-        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
+        us_stocks = ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD", 
+                     "JPM", "V", "MA", "NFLX", "DIS", "COST", "UNH", "XOM"]
+        if symbol in us_stocks:
             return f"US.{symbol}"
         
         # US Indices
-        if symbol == "US100":
+        if symbol in ["US100", "IXIC"]:
             return "US.US100"
-        if symbol == "US500":
-            return "US.SP"
-        if symbol == "SPX":
+        if symbol in ["US500", "SPX"]:
             return "US.SP"
         
         # European Indices
@@ -31,19 +31,28 @@ class MoomooBroker:
             return "DE.IX.DAX"
         if symbol == "UK100":
             return "UK.IX.FTSE"
+        if symbol == "FR40":
+            return "FR.IX.CAC"
         
-        # Default: assume US stock
+        # Hong Kong
+        if symbol == "HKHSI":
+            return "HK.IX.HS"
+        
+        # Default fallback
         return f"US.{symbol}"
 
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
+            
+            # Try to get trade context (optional for paper trading)
             try:
                 self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
             except AttributeError:
                 self.trade_ctx = None
+                
             self.connected = True
-            print("Connected to Moomoo openD")
+            print("Connected to Moomoo openD successfully")
             return True
         except Exception as e:
             print(f"Connection failed: {e}")
@@ -58,13 +67,30 @@ class MoomooBroker:
 
     def get_historical_data(self, symbol, start_date, end_date, freq="1"):
         if not self.connected:
-            self.connect()
+            if not self.connect():
+                return pd.DataFrame()
         
         code = self._format_code(symbol)
         
+        # Convert frequency to valid Futu ktype
+        ktype_map = {
+            "1": "K_1M",
+            "5": "K_5M",
+            "15": "K_15M",
+            "30": "K_30M",
+            "60": "K_60M",
+            "1D": "K_DAY",
+            "D": "K_DAY"
+        }
+        ktype = ktype_map.get(str(freq), "K_15M")
+        
         try:
             ret, data, page_req_key = self.quote_ctx.request_history_kline(
-                code=code, start=start_date, end=end_date, ktype=freq, max_count=1000
+                code=code, 
+                start=start_date, 
+                end=end_date, 
+                ktype=ktype, 
+                max_count=1000
             )
             if ret == ft.RET_OK:
                 df = data
@@ -74,7 +100,7 @@ class MoomooBroker:
                 print(f"Error getting data for {code}: {data}")
                 return pd.DataFrame()
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error fetching {code}: {e}")
             return pd.DataFrame()
 
     def place_order(self, symbol, side, quantity, price=None, order_type="MARKET", paper=True):

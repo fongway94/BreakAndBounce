@@ -3,10 +3,9 @@ import pandas as pd
 import time
 
 class MoomooBroker:
-    def __init__(self, host="127.0.0.1", port=11111, market="US"):
+    def __init__(self, host="127.0.0.1", port=11111):
         self.host = host
         self.port = port
-        self.market = market
         self.quote_ctx = None
         self.trade_ctx = None
         self.connected = False
@@ -14,7 +13,14 @@ class MoomooBroker:
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
-            self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
+            
+            # Try US trade context, fallback if not available
+            try:
+                self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
+            except AttributeError:
+                print("Warning: OpenUSTradeContext not available, using quote only")
+                self.trade_ctx = None
+                
             self.connected = True
             print("Connected to Moomoo openD")
             return True

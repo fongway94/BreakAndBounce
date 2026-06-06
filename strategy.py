@@ -152,3 +152,17 @@ def generate_signal(df_daily, df_15m, df_5m, market_open_time):
             "risk_reward": 2.0
         }
     return None
+
+def calculate_position_size(account_equity, risk_percent, entry_price, stop_loss_price, min_lot=1):
+    """Calculate position size based on risk percentage"""
+    if entry_price == stop_loss_price:
+        return min_lot
+    
+    risk_per_share = abs(entry_price - stop_loss_price)
+    risk_amount = account_equity * risk_percent
+    
+    if risk_per_share <= 0:
+        return min_lot
+    
+    size = risk_amount / risk_per_share
+    return max(min_lot, round(size))

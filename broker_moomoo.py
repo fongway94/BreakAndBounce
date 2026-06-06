@@ -15,10 +15,9 @@ class MoomooBroker:
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
             
-            # Use modern OpenTradeContext
-            self.trade_ctx = ft.OpenTradeContext(host=self.host, port=self.port)
+            # Use OpenSecTradeContext (newer versions)
+            self.trade_ctx = ft.OpenSecTradeContext(host=self.host, port=self.port)
             
-            # Enable paper trading if needed
             if self.use_real_paper:
                 self.trade_ctx.set_paper_trading(True)
                 print("Paper trading mode enabled")
@@ -59,7 +58,6 @@ class MoomooBroker:
                 print(f"Real paper order error: {e}")
                 return {"status": "error", "message": str(e)}
         else:
-            # Simulated paper trading
             print(f"[PAPER ORDER] {side.upper()} {quantity} {symbol} @ {price or 'MARKET'}")
             return {"status": "success", "order_id": f"PAPER_{int(time.time())}"}
 

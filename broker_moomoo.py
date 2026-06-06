@@ -11,49 +11,50 @@ class MoomooBroker:
         self.connected = False
 
     def _format_code(self, symbol):
-        """Convert ticker to Futu format with fallback options"""
+        """Convert ticker to Futu format"""
         symbol = symbol.upper()
         
         # US Stocks
-        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD", "JPM", "V", "MA", "NFLX", "DIS"]:
+        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
             return f"US.{symbol}"
         
-        # US Indices - Primary + Fallbacks
+        # US Indices (most common working formats)
         if symbol in ["US100", "IXIC"]:
-            return "US.IX.NASDAQ"           # Most common
-            # Alternative: "US.NASDAQ" or "US.US100"
+            return "US.NASDAQ"                    # Try this first
+            # return "US.IX.NASDAQ100"            # Alternative
         
         if symbol in ["US500", "SPX"]:
-            return "US.IX.SPX"              # Most common
-            # Alternative: "US.SP" or "US.US500"
+            return "US.SP"                        # Try this first
+            # return "US.IX.SPX"                  # Alternative
         
         # European Indices
         if symbol == "DE40":
-            return "DE.IX.DAX"              # Primary
-            # Alternative: "DE.DAX"
+            return "DE.DAX"                       # Try this first
+            # return "DE.IX.DAX"                  # Alternative
         
         if symbol == "UK100":
-            return "UK.IX.FTSE"
+            return "UK.FTSE"                      # Try this first
+            # return "UK.IX.FTSE"                 # Alternative
         
         if symbol == "FR40":
-            return "FR.IX.CAC"
+            return "FR.CAC"                       # Try this first
+            # return "FR.IX.CAC"                  # Alternative
         
         # Hong Kong
         if symbol == "HKHSI":
-            return "HK.IX.HS"
+            return "HK.HS"                        # Try this first
+            # return "HK.IX.HS"                   # Alternative
         
-        # Default fallback
+        # Default
         return f"US.{symbol}"
 
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
-            
             try:
                 self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
             except AttributeError:
                 self.trade_ctx = None
-                
             self.connected = True
             print("Connected to Moomoo openD successfully")
             return True
@@ -75,25 +76,15 @@ class MoomooBroker:
         
         code = self._format_code(symbol)
         
-        # Convert frequency to valid Futu ktype
         ktype_map = {
-            "1": "K_1M",
-            "5": "K_5M",
-            "15": "K_15M",
-            "30": "K_30M",
-            "60": "K_60M",
-            "1D": "K_DAY",
-            "D": "K_DAY"
+            "1": "K_1M", "5": "K_5M", "15": "K_15M",
+            "30": "K_30M", "60": "K_60M", "1D": "K_DAY", "D": "K_DAY"
         }
         ktype = ktype_map.get(str(freq), "K_15M")
         
         try:
             ret, data, page_req_key = self.quote_ctx.request_history_kline(
-                code=code, 
-                start=start_date, 
-                end=end_date, 
-                ktype=ktype, 
-                max_count=1000
+                code=code, start=start_date, end=end_date, ktype=ktype, max_count=1000
             )
             if ret == ft.RET_OK:
                 df = data

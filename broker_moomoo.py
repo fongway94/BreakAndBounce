@@ -64,7 +64,12 @@ class MoomooBroker:
             if not self.connect():
                 return pd.DataFrame()
         
-        code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
+        # Try different possible formats
+        possible_codes = [
+            f"US.{symbol}",
+            symbol,
+            f"{symbol}.US"
+        ]
         
         ktype_map = {
             "1": "K_1M", "5": "K_5M", "15": "K_15M",
@@ -72,20 +77,21 @@ class MoomooBroker:
         }
         ktype = ktype_map.get(str(freq), "K_15M")
         
-        try:
-            ret, data, page_req_key = self.quote_ctx.request_history_kline(
-                code=code, start=start_date, end=end_date, ktype=ktype, max_count=1000
-            )
-            if ret == ft.RET_OK:
-                df = data
-                df['time_key'] = pd.to_datetime(df['time_key'])
-                return df
-            else:
-                print(f"Error getting data for {code}: {data}")
-                return pd.DataFrame()
-        except Exception as e:
-            print(f"Error: {e}")
-            return pd.DataFrame()
+        for code in possible_codes:
+            try:
+                ret, data, page_req_key = self.quote_ctx.request_history_kline(
+                    code=code, start=start_date, end=end_date, ktype=ktype, max_count=1000
+                )
+                if ret == ft.RET_OK:
+                    df = data
+                    df['time_key'] = pd.to_datetime(df['time_key'])
+                    print(f"Successfully fetched using code: {code}")
+                    return df
+            except Exception as e:
+                continue
+        
+        print(f"All formats failed for {symbol}")
+        return pd.DataFrame()
 
     def get_account_info(self):
         return {"cash": 50000, "equity": 52000}

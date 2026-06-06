@@ -8,6 +8,12 @@ def test_paper_trade():
     
     # Initialize components
     broker = MoomooBroker(use_real_paper=USE_REAL_PAPER_TRADING)
+    
+    # === ADD THESE TWO LINES HERE ===
+    print("use_real_paper =", broker.use_real_paper)
+    print("trade_ctx =", broker.trade_ctx)
+    # =================================
+    
     logger = TradeLogger()
     notifier = TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
     

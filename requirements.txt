@@ -1,0 +1,7 @@
+streamlit
+futu-api
+pandas
+numpy
+python-telegram-bot
+python-dotenv
+plotly

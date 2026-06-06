@@ -1,4 +1,4 @@
-from config import TRADING_MODE, SYMBOLS, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, MAX_DAILY_LOSS, RISK_PER_TRADE
+from config import TRADING_MODE, SYMBOLS, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, MAX_DAILY_LOSS, RISK_PER_TRADE, USE_REAL_PAPER_TRADING
 from broker_moomoo import MoomooBroker
 from strategy import generate_signal, calculate_position_size, check_daily_loss_limit, is_near_end_of_window
 from logger import TradeLogger
@@ -9,7 +9,8 @@ from datetime import datetime, date
 class TradingBot:
     def __init__(self):
         self.mode = TRADING_MODE
-        self.broker = MoomooBroker()
+        self.use_real_paper = USE_REAL_PAPER_TRADING
+        self.broker = MoomooBroker(use_real_paper=self.use_real_paper)
         self.logger = TradeLogger()
         self.notifier = TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
         self.market_open = datetime.strptime("09:30", "%H:%M").time()
@@ -24,7 +25,7 @@ class TradingBot:
             print("Failed to connect to Moomoo openD")
             return False
         self.is_running = True
-        self.notifier.notify_status(f"Bot started in {self.mode} mode")
+        self.notifier.notify_status(f"Bot started in {self.mode} mode (Real Paper: {self.use_real_paper})")
         while self.is_running:
             self.run_cycle()
             time.sleep(60)
@@ -68,12 +69,21 @@ class TradingBot:
                         equity = account.get("equity", 50000)
                         quantity = calculate_position_size(equity, RISK_PER_TRADE, entry, stop_loss)
 
-                        order = self.broker.place_order(symbol, signal, quantity, paper=(self.mode == "paper"))
+                        order = self.broker.place_order(
+                            symbol, signal, quantity,
+                            paper=(self.mode == "paper")
+                        )
 
-                        self.logger.log_trade(symbol, signal, price=entry, quantity=quantity, mode=self.mode,
-                                              notes=f"SL:{stop_loss} TP:{take_profit}")
+                        self.logger.log_trade(
+                            symbol, signal, price=entry,
+                            quantity=quantity, mode=self.mode,
+                            notes=f"SL:{stop_loss} TP:{take_profit}"
+                        )
 
-                        self.notifier.notify_trade(symbol, signal, price=entry, quantity=quantity, mode=self.mode)
+                        self.notifier.notify_trade(
+                            symbol, signal, price=entry,
+                            quantity=quantity, mode=self.mode
+                        )
 
                         self.open_trades.append({
                             "symbol": symbol,
@@ -95,11 +105,15 @@ class TradingBot:
         if is_near_end_of_window(current_time, self.market_open):
             for trade in self.open_trades[:]:
                 print(f"[FORCE CLOSE] Closing trade on {trade['symbol']} at market price")
-                self.logger.log_trade(trade['symbol'], "force_close", price=trade['entry'],
-                                      quantity=trade['quantity'], mode=self.mode,
-                                      notes="Force closed at end of trading window")
-                self.notifier.notify_trade(trade['symbol'], "force_close", price=trade['entry'],
-                                           quantity=trade['quantity'], mode=self.mode)
+                self.logger.log_trade(
+                    trade['symbol'], "force_close", price=trade['entry'],
+                    quantity=trade['quantity'], mode=self.mode,
+                    notes="Force closed at end of trading window"
+                )
+                self.notifier.notify_trade(
+                    trade['symbol'], "force_close", price=trade['entry'],
+                    quantity=trade['quantity'], mode=self.mode
+                )
                 self.open_trades.remove(trade)
             print("All open trades force closed due to end of trading window.")
 

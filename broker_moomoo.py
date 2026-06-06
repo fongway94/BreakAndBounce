@@ -10,24 +10,27 @@ class MoomooBroker:
         self.trade_ctx = None
         self.connected = False
 
-        def _format_code(self, symbol):
-        """Convert ticker to correct Futu format"""
+    def _format_code(self, symbol):
+        """Convert ticker to Futu format with fallback options"""
         symbol = symbol.upper()
         
         # US Stocks
-        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
+        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD", "JPM", "V", "MA", "NFLX", "DIS"]:
             return f"US.{symbol}"
         
-        # US Indices (most common working formats)
+        # US Indices - Primary + Fallbacks
         if symbol in ["US100", "IXIC"]:
-            return "US.IX.NASDAQ"
+            return "US.IX.NASDAQ"           # Most common
+            # Alternative: "US.NASDAQ" or "US.US100"
+        
         if symbol in ["US500", "SPX"]:
-            return "US.IX.SPX"
+            return "US.IX.SPX"              # Most common
+            # Alternative: "US.SP" or "US.US500"
         
         # European Indices
         if symbol == "DE40":
-            return "DE.IX.DAX"          # First try
-            # return "DE.DAX"           # Uncomment if above fails
+            return "DE.IX.DAX"              # Primary
+            # Alternative: "DE.DAX"
         
         if symbol == "UK100":
             return "UK.IX.FTSE"
@@ -39,14 +42,13 @@ class MoomooBroker:
         if symbol == "HKHSI":
             return "HK.IX.HS"
         
-        # Default
+        # Default fallback
         return f"US.{symbol}"
 
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
             
-            # Try to get trade context (optional for paper trading)
             try:
                 self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
             except AttributeError:

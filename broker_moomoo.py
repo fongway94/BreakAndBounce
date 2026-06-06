@@ -11,66 +11,28 @@ class MoomooBroker:
         self.trade_ctx = None
         self.connected = False
 
-    
-    def _get_possible_codes(self, symbol):
-        """Return list of possible Futu codes to try"""
-        symbol = symbol.upper()
-        
-        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
-            return [f"US.{symbol}"]
-        
-        # US Indices - try multiple formats
-        if symbol in ["US100", "IXIC"]:
-            return ["US.NASDAQ", "US.IX.NASDAQ100", "US.US100", "US.IX.NASDAQ"]
-        
-        if symbol in ["US500", "SPX"]:
-            return ["US.SP", "US.IX.SPX", "US.US500", "US.IX.SP"]
-        
-        # European Indices
-        if symbol == "DE40":
-            return ["DE.DAX", "DE.IX.DAX", "DE.IX.DAX30"]
-        
-        if symbol == "UK100":
-            return ["UK.FTSE", "UK.IX.FTSE"]
-        
-        if symbol == "FR40":
-            return ["FR.CAC", "FR.IX.CAC"]
-        
-        # Hong Kong
-        if symbol == "HKHSI":
-            return ["HK.HS", "HK.IX.HS"]
-        
-        return [f"US.{symbol}"]
-        
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
+            self.connected = True
+            print("Connected to Moomoo openD successfully")
             
-            # Safe way to get trade contexts
-            trade_contexts = [
-                ("OpenUSTradeContext", getattr(ft, "OpenUSTradeContext", None)),
-                ("OpenTradeContext", getattr(ft, "OpenTradeContext", None)),
-                ("OpenHKTradeContext", getattr(ft, "OpenHKTradeContext", None)),
-            ]
-            
-            for name, ctx_class in trade_contexts:
-                if ctx_class is None:
-                    continue
+            # Try to get a trade context safely
+            for ctx_name in ["OpenUSTradeContext", "OpenTradeContext", "OpenHKTradeContext"]:
                 try:
-                    self.trade_ctx = ctx_class(host=self.host, port=self.port)
-                    print(f"Trade context initialized: {name}")
-                    break
+                    ctx_class = getattr(ft, ctx_name, None)
+                    if ctx_class:
+                        self.trade_ctx = ctx_class(host=self.host, port=self.port)
+                        print(f"Trade context initialized: {ctx_name}")
+                        break
                 except Exception as e:
-                    print(f"Failed to init {name}: {e}")
+                    print(f"Failed to init {ctx_name}: {e}")
                     continue
             
             if self.trade_ctx is None:
-                print("Warning: No trade context available. Using simulated paper trading.")
+                print("Warning: No trade context available. Real paper trading disabled.")
             
-            self.connected = True
-            print("Connected to Moomoo openD successfully")
             return True
-            
         except Exception as e:
             print(f"Connection failed: {e}")
             return False
@@ -94,16 +56,13 @@ class MoomooBroker:
                     order_type=ft.OrderType.NORMAL
                 )
                 if ret == ft.RET_OK:
-                    print(f"Order placed successfully: {data}")
                     return {"status": "success", "order_id": str(data)}
                 else:
-                    print(f"Order failed: {data}")
                     return {"status": "failed", "error": data}
             except Exception as e:
                 print(f"Real paper order error: {e}")
                 return {"status": "error", "message": str(e)}
         else:
-            # Simulated
             print(f"[PAPER ORDER] {side.upper()} {quantity} {symbol} @ {price or 'MARKET'}")
             return {"status": "success", "order_id": f"PAPER_{int(time.time())}"}
 
@@ -129,14 +88,10 @@ class MoomooBroker:
                 df['time_key'] = pd.to_datetime(df['time_key'])
                 return df
             else:
-                print(f"Error getting data for {code}: {data}")
                 return pd.DataFrame()
         except Exception as e:
             print(f"Error: {e}")
             return pd.DataFrame()
-
-    def get_account_info(self):
-        return {"cash": 50000, "equity": 52000}
 
     def get_account_info(self):
         return {"cash": 50000, "equity": 52000}

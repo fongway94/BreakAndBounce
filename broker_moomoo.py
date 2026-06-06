@@ -14,24 +14,17 @@ class MoomooBroker:
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
+            
+            # Use modern OpenTradeContext
+            self.trade_ctx = ft.OpenTradeContext(host=self.host, port=self.port)
+            
+            # Enable paper trading if needed
+            if self.use_real_paper:
+                self.trade_ctx.set_paper_trading(True)
+                print("Paper trading mode enabled")
+            
             self.connected = True
             print("Connected to Moomoo openD successfully")
-            
-            # Try to get a trade context safely
-            for ctx_name in ["OpenUSTradeContext", "OpenTradeContext", "OpenHKTradeContext"]:
-                try:
-                    ctx_class = getattr(ft, ctx_name, None)
-                    if ctx_class:
-                        self.trade_ctx = ctx_class(host=self.host, port=self.port)
-                        print(f"Trade context initialized: {ctx_name}")
-                        break
-                except Exception as e:
-                    print(f"Failed to init {ctx_name}: {e}")
-                    continue
-            
-            if self.trade_ctx is None:
-                print("Warning: No trade context available. Real paper trading disabled.")
-            
             return True
         except Exception as e:
             print(f"Connection failed: {e}")
@@ -53,16 +46,20 @@ class MoomooBroker:
                     qty=quantity,
                     code=symbol,
                     trd_side=ft.TrdSide.BUY if side.lower() == "buy" else ft.TrdSide.SELL,
-                    order_type=ft.OrderType.NORMAL
+                    order_type=ft.OrderType.NORMAL,
+                    trd_env=ft.TrdEnv.SIMULATE if self.use_real_paper else ft.TrdEnv.REAL
                 )
                 if ret == ft.RET_OK:
+                    print(f"Order placed successfully: {data}")
                     return {"status": "success", "order_id": str(data)}
                 else:
+                    print(f"Order failed: {data}")
                     return {"status": "failed", "error": data}
             except Exception as e:
                 print(f"Real paper order error: {e}")
                 return {"status": "error", "message": str(e)}
         else:
+            # Simulated paper trading
             print(f"[PAPER ORDER] {side.upper()} {quantity} {symbol} @ {price or 'MARKET'}")
             return {"status": "success", "order_id": f"PAPER_{int(time.time())}"}
 
@@ -88,6 +85,7 @@ class MoomooBroker:
                 df['time_key'] = pd.to_datetime(df['time_key'])
                 return df
             else:
+                print(f"Error getting data for {code}: {data}")
                 return pd.DataFrame()
         except Exception as e:
             print(f"Error: {e}")

@@ -33,3 +33,6 @@ class TradeLogger:
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(self.log_file, index=False)
         print(f"[LOG] Trade logged: {action} {symbol}")
+    
+    def get_trade_history(self):
+        return pd.read_csv(self.log_file)

@@ -9,14 +9,19 @@ def is_valid_candle(candle):
 def is_hammer(candle):
     if not is_valid_candle(candle):
         return False
+    
     body = abs(candle['close'] - candle['open'])
     if body == 0:
         return False
+        
     lower_wick = min(candle['open'], candle['close']) - candle['low']
     upper_wick = candle['high'] - max(candle['open'], candle['close'])
-    if lower_wick > 2 * body and upper_wick < body * 0.5:
+    
+    # Hammer: long lower wick, small upper wick relative to body
+    if lower_wick > 2 * body and upper_wick < body * 1.2:
         return True
-    if upper_wick > 2 * body and lower_wick < body * 0.5:
+    # Inverted Hammer
+    if upper_wick > 2 * body and lower_wick < body * 1.2:
         return True
     return False
 

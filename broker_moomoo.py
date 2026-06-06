@@ -10,27 +10,28 @@ class MoomooBroker:
         self.trade_ctx = None
         self.connected = False
 
-    def _format_code(self, symbol):
+        def _format_code(self, symbol):
         """Convert ticker to correct Futu format"""
         symbol = symbol.upper()
         
         # US Stocks
-        us_stocks = ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD", 
-                     "JPM", "V", "MA", "NFLX", "DIS", "COST", "UNH", "XOM"]
-        if symbol in us_stocks:
+        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
             return f"US.{symbol}"
         
-        # US Indices
+        # US Indices (most common working formats)
         if symbol in ["US100", "IXIC"]:
-            return "US.US100"
+            return "US.IX.NASDAQ"
         if symbol in ["US500", "SPX"]:
-            return "US.SP"
+            return "US.IX.SPX"
         
         # European Indices
         if symbol == "DE40":
-            return "DE.IX.DAX"
+            return "DE.IX.DAX"          # First try
+            # return "DE.DAX"           # Uncomment if above fails
+        
         if symbol == "UK100":
             return "UK.IX.FTSE"
+        
         if symbol == "FR40":
             return "FR.IX.CAC"
         
@@ -38,7 +39,7 @@ class MoomooBroker:
         if symbol == "HKHSI":
             return "HK.IX.HS"
         
-        # Default fallback
+        # Default
         return f"US.{symbol}"
 
     def connect(self):

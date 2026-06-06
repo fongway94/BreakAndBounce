@@ -94,6 +94,21 @@ def is_near_end_of_window(current_time, market_open_time, buffer_minutes=10):
     minutes_since_open = (current_time.hour * 60 + current_time.minute) - (market_open_time.hour * 60 + market_open_time.minute)
     return minutes_since_open >= (150 - buffer_minutes)
 
+def calculate_position_size(account_equity, risk_percent, entry_price, stop_loss_price, min_lot=1):
+    """Calculate position size based on risk percentage"""
+    if entry_price == stop_loss_price:
+        return min_lot
+    risk_per_share = abs(entry_price - stop_loss_price)
+    risk_amount = account_equity * risk_percent
+    if risk_per_share <= 0:
+        return min_lot
+    size = risk_amount / risk_per_share
+    return max(min_lot, round(size))
+
+def check_daily_loss_limit(daily_pnl, max_daily_loss):
+    """Check if daily loss limit has been hit"""
+    return daily_pnl <= -max_daily_loss
+
 def calculate_mechanical_stop_loss(entry_price, direction, daily_high, daily_low, reversal_low=None, reversal_high=None):
     box_height = daily_high - daily_low
     if direction == "buy":

@@ -31,16 +31,22 @@ class MoomooBroker:
         self.connected = False
 
     def place_order(self, symbol, side, quantity, price=None, order_type="MARKET", paper=True):
+        # Format the symbol for trading
+        if not symbol.startswith("US."):
+            code = f"US.{symbol}"
+        else:
+            code = symbol
+        
         if self.trade_ctx:
             trd_env = ft.TrdEnv.SIMULATE if self.use_real_paper else ft.TrdEnv.REAL
             
-            print(f"[{'REAL PAPER' if self.use_real_paper else 'LIVE'} ORDER] {side.upper()} {quantity} {symbol}")
+            print(f"[{'REAL PAPER' if self.use_real_paper else 'LIVE'} ORDER] {side.upper()} {quantity} {code}")
             
             try:
                 ret, data = self.trade_ctx.place_order(
                     price=price or 0,
                     qty=quantity,
-                    code=symbol,
+                    code=code,
                     trd_side=ft.TrdSide.BUY if side.lower() == "buy" else ft.TrdSide.SELL,
                     order_type=ft.OrderType.NORMAL,
                     trd_env=trd_env
@@ -55,8 +61,7 @@ class MoomooBroker:
                 print(f"Order error: {e}")
                 return {"status": "error", "message": str(e)}
         else:
-            # Fallback to simulated
-            print(f"[PAPER ORDER] {side.upper()} {quantity} {symbol} @ {price or 'MARKET'}")
+            print(f"[PAPER ORDER] {side.upper()} {quantity} {code} @ {price or 'MARKET'}")
             return {"status": "success", "order_id": f"PAPER_{int(time.time())}"}
 
     def get_historical_data(self, symbol, start_date, end_date, freq="1"):

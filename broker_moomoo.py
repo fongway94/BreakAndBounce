@@ -10,17 +10,38 @@ class MoomooBroker:
         self.trade_ctx = None
         self.connected = False
 
+    def _format_code(self, symbol):
+        """Convert ticker to Futu format"""
+        symbol = symbol.upper()
+        
+        # US Stocks
+        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
+            return f"US.{symbol}"
+        
+        # US Indices
+        if symbol == "US100":
+            return "US.US100"
+        if symbol == "US500":
+            return "US.SP"
+        if symbol == "SPX":
+            return "US.SP"
+        
+        # European Indices
+        if symbol == "DE40":
+            return "DE.IX.DAX"
+        if symbol == "UK100":
+            return "UK.IX.FTSE"
+        
+        # Default: assume US stock
+        return f"US.{symbol}"
+
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
-            
-            # Try US trade context, fallback if not available
             try:
                 self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
             except AttributeError:
-                print("Warning: OpenUSTradeContext not available, using quote only")
                 self.trade_ctx = None
-                
             self.connected = True
             print("Connected to Moomoo openD")
             return True
@@ -38,16 +59,19 @@ class MoomooBroker:
     def get_historical_data(self, symbol, start_date, end_date, freq="1"):
         if not self.connected:
             self.connect()
+        
+        code = self._format_code(symbol)
+        
         try:
             ret, data, page_req_key = self.quote_ctx.request_history_kline(
-                code=symbol, start=start_date, end=end_date, ktype=freq, max_count=1000
+                code=code, start=start_date, end=end_date, ktype=freq, max_count=1000
             )
             if ret == ft.RET_OK:
                 df = data
                 df['time_key'] = pd.to_datetime(df['time_key'])
                 return df
             else:
-                print(f"Error getting data: {data}")
+                print(f"Error getting data for {code}: {data}")
                 return pd.DataFrame()
         except Exception as e:
             print(f"Error: {e}")

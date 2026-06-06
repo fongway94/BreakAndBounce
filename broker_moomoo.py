@@ -10,7 +10,8 @@ class MoomooBroker:
         self.quote_ctx = None
         self.trade_ctx = None
         self.connected = False
-        
+
+    
     def _get_possible_codes(self, symbol):
         """Return list of possible Futu codes to try"""
         symbol = symbol.upper()
@@ -40,19 +41,36 @@ class MoomooBroker:
             return ["HK.HS", "HK.IX.HS"]
         
         return [f"US.{symbol}"]
-    
+        
     def connect(self):
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
             
-            try:
-                self.trade_ctx = ft.OpenUSTradeContext(host=self.host, port=self.port)
-            except AttributeError:
-                self.trade_ctx = None
-                
+            # Try different trade contexts
+            trade_contexts = [
+                ("OpenUSTradeContext", ft.OpenUSTradeContext),
+                ("OpenTradeContext", getattr(ft, "OpenTradeContext", None)),
+                ("OpenHKTradeContext", getattr(ft, "OpenHKTradeContext", None)),
+            ]
+            
+            for name, ctx_class in trade_contexts:
+                if ctx_class is None:
+                    continue
+                try:
+                    self.trade_ctx = ctx_class(host=self.host, port=self.port)
+                    print(f"Trade context initialized: {name}")
+                    break
+                except Exception as e:
+                    print(f"Failed to init {name}: {e}")
+                    continue
+            
+            if self.trade_ctx is None:
+                print("Warning: No trade context available. Real paper trading disabled.")
+            
             self.connected = True
             print("Connected to Moomoo openD successfully")
             return True
+            
         except Exception as e:
             print(f"Connection failed: {e}")
             return False
@@ -66,10 +84,8 @@ class MoomooBroker:
 
     def place_order(self, symbol, side, quantity, price=None, order_type="MARKET", paper=True):
         if self.use_real_paper and self.trade_ctx:
-            # Real paper trading attempt
             print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {symbol}")
             try:
-                # This is a simplified call - real implementation may need more parameters
                 ret, data = self.trade_ctx.place_order(
                     price=price or 0,
                     qty=quantity,
@@ -87,7 +103,7 @@ class MoomooBroker:
                 print(f"Real paper order error: {e}")
                 return {"status": "error", "message": str(e)}
         else:
-            # Simulated paper trading
+            # Simulated
             print(f"[PAPER ORDER] {side.upper()} {quantity} {symbol} @ {price or 'MARKET'}")
             return {"status": "success", "order_id": f"PAPER_{int(time.time())}"}
 
@@ -118,6 +134,9 @@ class MoomooBroker:
         except Exception as e:
             print(f"Error: {e}")
             return pd.DataFrame()
+
+    def get_account_info(self):
+        return {"cash": 50000, "equity": 52000}
 
     def get_account_info(self):
         return {"cash": 50000, "equity": 52000}

@@ -46,9 +46,9 @@ class MoomooBroker:
         try:
             self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
             
-            # Try different trade contexts
+            # Safe way to get trade contexts
             trade_contexts = [
-                ("OpenUSTradeContext", ft.OpenUSTradeContext),
+                ("OpenUSTradeContext", getattr(ft, "OpenUSTradeContext", None)),
                 ("OpenTradeContext", getattr(ft, "OpenTradeContext", None)),
                 ("OpenHKTradeContext", getattr(ft, "OpenHKTradeContext", None)),
             ]
@@ -65,7 +65,7 @@ class MoomooBroker:
                     continue
             
             if self.trade_ctx is None:
-                print("Warning: No trade context available. Real paper trading disabled.")
+                print("Warning: No trade context available. Using simulated paper trading.")
             
             self.connected = True
             print("Connected to Moomoo openD successfully")

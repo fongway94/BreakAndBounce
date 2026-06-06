@@ -10,43 +10,35 @@ class MoomooBroker:
         self.trade_ctx = None
         self.connected = False
 
-    def _format_code(self, symbol):
-        """Convert ticker to Futu format"""
+    def _get_possible_codes(self, symbol):
+        """Return list of possible Futu codes to try"""
         symbol = symbol.upper()
         
-        # US Stocks
         if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
-            return f"US.{symbol}"
+            return [f"US.{symbol}"]
         
-        # US Indices (most common working formats)
+        # US Indices - try multiple formats
         if symbol in ["US100", "IXIC"]:
-            return "US.NASDAQ"                    # Try this first
-            # return "US.IX.NASDAQ100"            # Alternative
+            return ["US.NASDAQ", "US.IX.NASDAQ100", "US.US100", "US.IX.NASDAQ"]
         
         if symbol in ["US500", "SPX"]:
-            return "US.SP"                        # Try this first
-            # return "US.IX.SPX"                  # Alternative
+            return ["US.SP", "US.IX.SPX", "US.US500", "US.IX.SP"]
         
         # European Indices
         if symbol == "DE40":
-            return "DE.DAX"                       # Try this first
-            # return "DE.IX.DAX"                  # Alternative
+            return ["DE.DAX", "DE.IX.DAX", "DE.IX.DAX30"]
         
         if symbol == "UK100":
-            return "UK.FTSE"                      # Try this first
-            # return "UK.IX.FTSE"                 # Alternative
+            return ["UK.FTSE", "UK.IX.FTSE"]
         
         if symbol == "FR40":
-            return "FR.CAC"                       # Try this first
-            # return "FR.IX.CAC"                  # Alternative
+            return ["FR.CAC", "FR.IX.CAC"]
         
         # Hong Kong
         if symbol == "HKHSI":
-            return "HK.HS"                        # Try this first
-            # return "HK.IX.HS"                   # Alternative
+            return ["HK.HS", "HK.IX.HS"]
         
-        # Default
-        return f"US.{symbol}"
+        return [f"US.{symbol}"]
 
     def connect(self):
         try:
@@ -74,7 +66,7 @@ class MoomooBroker:
             if not self.connect():
                 return pd.DataFrame()
         
-        code = self._format_code(symbol)
+        possible_codes = self._get_possible_codes(symbol)
         
         ktype_map = {
             "1": "K_1M", "5": "K_5M", "15": "K_15M",
@@ -82,20 +74,24 @@ class MoomooBroker:
         }
         ktype = ktype_map.get(str(freq), "K_15M")
         
-        try:
-            ret, data, page_req_key = self.quote_ctx.request_history_kline(
-                code=code, start=start_date, end=end_date, ktype=ktype, max_count=1000
-            )
-            if ret == ft.RET_OK:
-                df = data
-                df['time_key'] = pd.to_datetime(df['time_key'])
-                return df
-            else:
-                print(f"Error getting data for {code}: {data}")
-                return pd.DataFrame()
-        except Exception as e:
-            print(f"Error fetching {code}: {e}")
-            return pd.DataFrame()
+        for code in possible_codes:
+            try:
+                ret, data, page_req_key = self.quote_ctx.request_history_kline(
+                    code=code, start=start_date, end=end_date, ktype=ktype, max_count=1000
+                )
+                if ret == ft.RET_OK:
+                    df = data
+                    df['time_key'] = pd.to_datetime(df['time_key'])
+                    print(f"Successfully fetched data using code: {code}")
+                    return df
+                else:
+                    print(f"Tried {code} - failed: {data}")
+            except Exception as e:
+                print(f"Error with {code}: {e}")
+                continue
+        
+        print(f"All formats failed for {symbol}")
+        return pd.DataFrame()
 
     def place_order(self, symbol, side, quantity, price=None, order_type="MARKET", paper=True):
         if paper:

@@ -25,7 +25,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.subheader("📈 Performance")
     logger = TradeLogger()
-    history = logger.get_trade_history()
+    history = logger.get_trade_history()          # ← Fixed here
     if not history.empty:
         total_trades = len(history)
         st.metric("Total Trades", total_trades)

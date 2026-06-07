@@ -9,18 +9,13 @@ def is_valid_candle(candle):
 def is_hammer(candle):
     if not is_valid_candle(candle):
         return False
-    
     body = abs(candle['close'] - candle['open'])
     if body == 0:
         return False
-        
     lower_wick = min(candle['open'], candle['close']) - candle['low']
     upper_wick = candle['high'] - max(candle['open'], candle['close'])
-    
-    # Hammer: long lower wick, small upper wick relative to body
     if lower_wick > 2 * body and upper_wick < body * 1.2:
         return True
-    # Inverted Hammer
     if upper_wick > 2 * body and lower_wick < body * 1.2:
         return True
     return False
@@ -100,7 +95,6 @@ def is_near_end_of_window(current_time, market_open_time, buffer_minutes=10):
     return minutes_since_open >= (150 - buffer_minutes)
 
 def calculate_position_size(account_equity, risk_percent, entry_price, stop_loss_price, min_lot=1):
-    """Calculate position size based on risk percentage"""
     if entry_price == stop_loss_price:
         return min_lot
     risk_per_share = abs(entry_price - stop_loss_price)
@@ -111,7 +105,6 @@ def calculate_position_size(account_equity, risk_percent, entry_price, stop_loss
     return max(min_lot, round(size))
 
 def check_daily_loss_limit(daily_pnl, max_daily_loss):
-    """Check if daily loss limit has been hit"""
     return daily_pnl <= -max_daily_loss
 
 def calculate_mechanical_stop_loss(entry_price, direction, daily_high, daily_low, reversal_low=None, reversal_high=None):

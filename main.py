@@ -1,6 +1,6 @@
 from config import TRADING_MODE, SYMBOLS, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, MAX_DAILY_LOSS, RISK_PER_TRADE, USE_REAL_PAPER_TRADING
 from broker_moomoo import MoomooBroker
-from strategy import generate_signal, calculate_position_size, check_daily_loss_limit, is_near_end_of_window
+from strategy import generate_signal, calculate_position_size, check_daily_loss_limit, is_near_end_of_window, get_us_eastern_time
 from logger import TradeLogger
 from notifier import TelegramNotifier
 import time

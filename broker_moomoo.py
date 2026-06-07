@@ -28,7 +28,7 @@ class MoomooBroker:
 
     def place_order(self, symbol, side, quantity, price=None):
         try:
-            # Create a fresh context every time (like diagnose_trading.py)
+            # Create fresh context and get fresh acc_id every time (like diagnose_trading.py)
             trd_ctx = OpenSecTradeContext(
                 filter_trdmarket=TrdMarket.US,
                 host=self.host,

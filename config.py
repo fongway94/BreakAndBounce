@@ -13,12 +13,6 @@ SYMBOLS = [
     "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD",
     # Other Popular Stocks
     "JPM", "V", "MA", "NFLX", "DIS",
-    # US Indices
-    "US100", "US500", "SPX",
-    # European Indices
-    "DE40", "UK100", "FR40",
-    # Asian Indices
-    "HKHSI",
 ]
 
 # ==================== TIME SETTINGS ====================

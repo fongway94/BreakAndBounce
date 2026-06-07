@@ -18,7 +18,6 @@ class MoomooBroker:
     def connect(self):
         try:
             self.quote_ctx = OpenQuoteContext(host=self.host, port=self.port)
-            
             self.trade_ctx = OpenSecTradeContext(
                 filter_trdmarket=TrdMarket.US,
                 host=self.host,
@@ -26,7 +25,6 @@ class MoomooBroker:
                 security_firm=SecurityFirm.FUTUINC
             )
             
-            # Get account list
             ret, data = self.trade_ctx.get_acc_list()
             if ret == RET_OK and not data.empty:
                 self.acc_id = data['acc_id'][0]
@@ -42,22 +40,6 @@ class MoomooBroker:
             print(f"Connection failed: {e}")
             return False
 
-    def unlock_trade(self):
-        if not self.trade_ctx or not self.password:
-            return False
-        try:
-            ret, data = self.trade_ctx.unlock_trade(self.password)
-            if ret == RET_OK:
-                self.unlocked = True
-                print("Trade unlocked successfully")
-                return True
-            else:
-                print(f"Unlock failed: {data}")
-                return False
-        except Exception as e:
-            print(f"Unlock error: {e}")
-            return False
-
     def disconnect(self):
         if self.quote_ctx:
             self.quote_ctx.close()
@@ -70,12 +52,8 @@ class MoomooBroker:
         if not self.trade_ctx or not self.acc_id:
             return {"status": "error", "message": "No trade context or account ID"}
         
-        if self.use_real_paper and not self.unlocked:
-            self.unlock_trade()
-        
         trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
         code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
-        
         effective_price = 0.0001 if price is None or price <= 0 else price
         
         print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code} @ {effective_price}")
@@ -89,7 +67,6 @@ class MoomooBroker:
                 trd_side=TrdSide.BUY if side.lower() == "buy" else TrdSide.SELL,
                 order_type=OrderType.MARKET,
                 trd_env=trd_env
-                # trd_market parameter removed
             )
             if ret == RET_OK:
                 print(f"Order placed successfully: {data}")

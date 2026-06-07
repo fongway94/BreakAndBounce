@@ -1,7 +1,7 @@
-import futu as ft
+from moomoo import *
 import pandas as pd
 import time
-from config import MOOMOO_TRADING_PASSWORD
+from config import MOOMOO_TRADING_PASSWORD, USE_REAL_PAPER_TRADING
 
 class MoomooBroker:
     def __init__(self, host="127.0.0.1", port=11111, use_real_paper=False):
@@ -16,8 +16,14 @@ class MoomooBroker:
 
     def connect(self):
         try:
-            self.quote_ctx = ft.OpenQuoteContext(host=self.host, port=self.port)
-            self.trade_ctx = ft.OpenSecTradeContext(host=self.host, port=self.port)
+            self.quote_ctx = OpenQuoteContext(host=self.host, port=self.port)
+            
+            self.trade_ctx = OpenSecTradeContext(
+                filter_trdmarket=TrdMarket.US,
+                host=self.host,
+                port=self.port,
+                security_firm=SecurityFirm.FUTUINC
+            )
             
             self.connected = True
             print("Connected to Moomoo openD successfully")
@@ -27,12 +33,12 @@ class MoomooBroker:
             return False
 
     def unlock_trade(self):
-        """Unlock trading using password from .env"""
         if not self.trade_ctx or not self.password:
+            print("Missing trade context or password")
             return False
         try:
-            ret, data = self.trade_ctx.unlock_trade(password=self.password)
-            if ret == ft.RET_OK:
+            ret, data = self.trade_ctx.unlock_trade(self.password)
+            if ret == RET_OK:
                 self.unlocked = True
                 print("Trade unlocked successfully")
                 return True
@@ -51,16 +57,15 @@ class MoomooBroker:
         self.connected = False
         self.unlocked = False
 
-    def place_order(self, symbol, side, quantity, price=None, order_type="MARKET", paper=True):
+    def place_order(self, symbol, side, quantity, price=None):
         if not self.trade_ctx:
             return {"status": "error", "message": "No trade context available"}
         
-        # Unlock if needed
         if self.use_real_paper and not self.unlocked:
             if not self.unlock_trade():
                 return {"status": "error", "message": "Failed to unlock trade"}
         
-        trd_env = ft.TrdEnv.SIMULATE if self.use_real_paper else ft.TrdEnv.REAL
+        trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
         code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
         
         print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code}")
@@ -70,11 +75,11 @@ class MoomooBroker:
                 price=price or 0,
                 qty=quantity,
                 code=code,
-                trd_side=ft.TrdSide.BUY if side.lower() == "buy" else ft.TrdSide.SELL,
-                order_type=ft.OrderType.NORMAL,
+                trd_side=TrdSide.BUY if side.lower() == "buy" else TrdSide.SELL,
+                order_type=OrderType.NORMAL,
                 trd_env=trd_env
             )
-            if ret == ft.RET_OK:
+            if ret == RET_OK:
                 print(f"Order placed successfully: {data}")
                 return {"status": "success", "order_id": str(data)}
             else:
@@ -101,7 +106,7 @@ class MoomooBroker:
             ret, data, page_req_key = self.quote_ctx.request_history_kline(
                 code=code, start=start_date, end=end_date, ktype=ktype, max_count=1000
             )
-            if ret == ft.RET_OK:
+            if ret == RET_OK:
                 df = data
                 df['time_key'] = pd.to_datetime(df['time_key'])
                 return df

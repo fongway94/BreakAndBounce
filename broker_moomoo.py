@@ -13,6 +13,7 @@ class MoomooBroker:
         self.connected = False
         self.unlocked = False
         self.password = MOOMOO_TRADING_PASSWORD
+        self.acc_id = None
 
     def connect(self):
         try:
@@ -25,6 +26,15 @@ class MoomooBroker:
                 security_firm=SecurityFirm.FUTUINC
             )
             
+            # Get account list and use the first available account
+            ret, data = self.trade_ctx.get_acc_list()
+            if ret == RET_OK and not data.empty:
+                self.acc_id = data['acc_id'][0]
+                print(f"Using account ID: {self.acc_id}")
+            else:
+                print(f"Failed to get account list: {data}")
+                return False
+            
             self.connected = True
             print("Connected to Moomoo openD successfully")
             return True
@@ -34,7 +44,6 @@ class MoomooBroker:
 
     def unlock_trade(self):
         if not self.trade_ctx or not self.password:
-            print("Missing trade context or password")
             return False
         try:
             ret, data = self.trade_ctx.unlock_trade(self.password)
@@ -58,8 +67,8 @@ class MoomooBroker:
         self.unlocked = False
 
     def place_order(self, symbol, side, quantity, price=None):
-        if not self.trade_ctx:
-            return {"status": "error", "message": "No trade context available"}
+        if not self.trade_ctx or not self.acc_id:
+            return {"status": "error", "message": "No trade context or account ID"}
         
         if self.use_real_paper and not self.unlocked:
             if not self.unlock_trade():
@@ -72,6 +81,7 @@ class MoomooBroker:
         
         try:
             ret, data = self.trade_ctx.place_order(
+                acc_id=self.acc_id,
                 price=price or 0,
                 qty=quantity,
                 code=code,

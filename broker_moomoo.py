@@ -9,18 +9,11 @@ class MoomooBroker:
         self.port = port
         self.use_real_paper = use_real_paper
         self.quote_ctx = None
-        self.trade_ctx = None
         self.connected = False
 
     def connect(self):
         try:
             self.quote_ctx = OpenQuoteContext(host=self.host, port=self.port)
-            self.trade_ctx = OpenSecTradeContext(
-                filter_trdmarket=TrdMarket.US,
-                host=self.host,
-                port=self.port,
-                security_firm=SecurityFirm.FUTUINC
-            )
             self.connected = True
             print("Connected to Moomoo openD successfully")
             return True
@@ -31,30 +24,33 @@ class MoomooBroker:
     def disconnect(self):
         if self.quote_ctx:
             self.quote_ctx.close()
-        if self.trade_ctx:
-            self.trade_ctx.close()
         self.connected = False
 
     def place_order(self, symbol, side, quantity, price=None):
-        if not self.trade_ctx:
-            return {"status": "error", "message": "No trade context available"}
-        
-        # Always get fresh account list
-        ret, data = self.trade_ctx.get_acc_list()
-        if ret != RET_OK or data.empty:
-            return {"status": "error", "message": "Failed to get account list"}
-        
-        acc_id = data['acc_id'][0]
-        print(f"Using fresh acc_id: {acc_id}")
-        
-        trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
-        code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
-        effective_price = 0.0001 if price is None or price <= 0 else price
-        
-        print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code} @ {effective_price}")
-        
         try:
-            ret, data = self.trade_ctx.place_order(
+            # Create a fresh context every time (like diagnose_trading.py)
+            trd_ctx = OpenSecTradeContext(
+                filter_trdmarket=TrdMarket.US,
+                host=self.host,
+                port=self.port,
+                security_firm=SecurityFirm.FUTUINC
+            )
+            
+            ret, data = trd_ctx.get_acc_list()
+            if ret != RET_OK or data.empty:
+                trd_ctx.close()
+                return {"status": "error", "message": "Failed to get account list"}
+            
+            acc_id = data['acc_id'][0]
+            print(f"Using fresh acc_id: {acc_id}")
+            
+            trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
+            code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
+            effective_price = 0.0001 if price is None or price <= 0 else price
+            
+            print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code} @ {effective_price}")
+            
+            ret, data = trd_ctx.place_order(
                 acc_id=acc_id,
                 price=effective_price,
                 qty=quantity,
@@ -63,6 +59,9 @@ class MoomooBroker:
                 order_type=OrderType.MARKET,
                 trd_env=trd_env
             )
+            
+            trd_ctx.close()
+            
             if ret == RET_OK:
                 print(f"Order placed successfully: {data}")
                 return {"status": "success", "order_id": str(data)}

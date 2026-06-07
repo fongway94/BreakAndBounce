@@ -32,6 +32,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # ==================== MOOMOO / openD ====================
 MOOMOO_HOST = "127.0.0.1"
 MOOMOO_PORT = 11111
+MOOMOO_TRADING_PASSWORD = os.getenv("MOOMOO_TRADING_PASSWORD", "")
 
 # ==================== RISK MANAGEMENT ====================
 MAX_DAILY_LOSS = 500

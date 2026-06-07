@@ -59,6 +59,7 @@ class MoomooBroker:
         print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code} @ {effective_price}")
         
         try:
+            # This matches the successful diagnostic call
             ret, data = self.trade_ctx.place_order(
                 acc_id=self.acc_id,
                 price=effective_price,

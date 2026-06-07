@@ -36,48 +36,53 @@ class TradingBot:
             self.daily_pnl = 0
             self.trades_today = 0
         self.last_date = current_date
-
+    
         if check_daily_loss_limit(self.daily_pnl, MAX_DAILY_LOSS):
             print("Daily loss limit reached. Stopping trading for today.")
             self.notifier.notify_status("Daily loss limit reached - trading paused")
             self.is_running = False
             return
-
+    
         self.force_close_trades()
-
+    
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Running cycle...")
+    
         for symbol in SYMBOLS:
             try:
+                print(f"  Fetching data for {symbol}...")
+    
                 df_daily = self.broker.get_historical_data(symbol, "2025-01-01", "2026-06-06", freq="1")
                 df_15m = self.broker.get_historical_data(symbol, "2025-01-01", "2026-06-06", freq="15")
                 df_5m = self.broker.get_historical_data(symbol, "2025-01-01", "2026-06-06", freq="5")
-
+    
+                print(f"    Daily: {len(df_daily)} rows | 15m: {len(df_15m)} rows | 5m: {len(df_5m)} rows")
+    
                 if df_daily.empty or df_15m.empty or df_5m.empty:
+                    print(f"    Skipping {symbol} (insufficient data)")
                     continue
-
+    
                 result = generate_signal(df_daily, df_15m, df_5m, self.market_open)
-
+    
                 if result and isinstance(result, dict):
                     signal = result["signal"]
                     entry_price = result["entry"]
                     stop_loss = result["stop_loss"]
                     take_profit = result["take_profit"]
-
-                    print(f"[{datetime.now()}] SIGNAL: {signal.upper()} on {symbol} | Entry: {entry_price} | SL: {stop_loss} | TP: {take_profit}")
-
+    
+                    print(f"  >>> SIGNAL: {signal.upper()} on {symbol} | Entry: {entry_price} | SL: {stop_loss} | TP: {take_profit}")
+    
                     if self.mode in ["paper", "live"]:
                         account = self.broker.get_account_info()
                         equity = account.get("equity", 50000)
-
-                        # Calculate quantity based on equity and risk
                         quantity = calculate_position_size(equity, RISK_PER_TRADE, entry_price, stop_loss)
-
+    
                         order = self.broker.place_order(
                             symbol=symbol,
                             side=signal,
                             quantity=quantity,
                             price=entry_price
                         )
-
+    
                         self.logger.log_trade(
                             symbol=symbol,
                             action=signal,
@@ -86,7 +91,7 @@ class TradingBot:
                             mode=self.mode,
                             notes=f"SL:{stop_loss} TP:{take_profit}"
                         )
-
+    
                         self.notifier.notify_trade(
                             symbol=symbol,
                             action=signal,
@@ -94,7 +99,7 @@ class TradingBot:
                             quantity=quantity,
                             mode=self.mode
                         )
-
+    
                         self.open_trades.append({
                             "symbol": symbol,
                             "entry": entry_price,
@@ -103,9 +108,9 @@ class TradingBot:
                             "take_profit": take_profit
                         })
                         self.trades_today += 1
-
+    
             except Exception as e:
-                print(f"Error processing {symbol}: {e}")
+                print(f"  Error processing {symbol}: {e}")
                 continue
 
     def force_close_trades(self):

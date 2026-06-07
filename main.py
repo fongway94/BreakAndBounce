@@ -111,7 +111,7 @@ class TradingBot:
     def force_close_trades(self):
         if not self.open_trades:
             return
-        current_time = datetime.now().time()
+        current_time = get_us_eastern_time().time()
         if is_near_end_of_window(current_time, self.market_open):
             for trade in self.open_trades[:]:
                 print(f"[FORCE CLOSE] Closing trade on {trade['symbol']} at market price")

@@ -26,9 +26,10 @@ class MoomooBroker:
                 security_firm=SecurityFirm.FUTUINC
             )
             
-            # Get account list and use the first available account
+            # Get account list
             ret, data = self.trade_ctx.get_acc_list()
             if ret == RET_OK and not data.empty:
+                # Use the first US account
                 self.acc_id = data['acc_id'][0]
                 print(f"Using account ID: {self.acc_id}")
             else:

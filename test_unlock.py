@@ -10,7 +10,12 @@ def test_unlock():
     password = os.getenv("MOOMOO_TRADING_PASSWORD", "")
     
     print("=== Testing Unlock Trade ===")
-    print(f"Password loaded: {'Yes' if password else 'No (empty)'}")
+    print(f"Password loaded from .env: {'Yes' if password else 'No'}")
+    print(f"Password length: {len(password)} characters")
+    
+    if not password:
+        print("ERROR: No trading password found in .env file!")
+        return
     
     try:
         trd_ctx = OpenSecTradeContext(
@@ -20,11 +25,6 @@ def test_unlock():
             security_firm=SecurityFirm.FUTUINC
         )
         print("OpenSecTradeContext created successfully")
-        
-        if not password:
-            print("ERROR: No trading password found in .env")
-            trd_ctx.close()
-            return
         
         ret, data = trd_ctx.unlock_trade(password)
         

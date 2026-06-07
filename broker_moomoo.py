@@ -11,7 +11,6 @@ class MoomooBroker:
         self.quote_ctx = None
         self.trade_ctx = None
         self.connected = False
-        self.acc_id = None
 
     def connect(self):
         try:
@@ -22,15 +21,6 @@ class MoomooBroker:
                 port=self.port,
                 security_firm=SecurityFirm.FUTUINC
             )
-            
-            ret, data = self.trade_ctx.get_acc_list()
-            if ret == RET_OK and not data.empty:
-                self.acc_id = data['acc_id'][0]
-                print(f"Using account ID: {self.acc_id}")
-            else:
-                print(f"Failed to get account list: {data}")
-                return False
-            
             self.connected = True
             print("Connected to Moomoo openD successfully")
             return True
@@ -46,8 +36,16 @@ class MoomooBroker:
         self.connected = False
 
     def place_order(self, symbol, side, quantity, price=None):
-        if not self.trade_ctx or not self.acc_id:
-            return {"status": "error", "message": "No trade context or account ID"}
+        if not self.trade_ctx:
+            return {"status": "error", "message": "No trade context available"}
+        
+        # Always get fresh account list
+        ret, data = self.trade_ctx.get_acc_list()
+        if ret != RET_OK or data.empty:
+            return {"status": "error", "message": "Failed to get account list"}
+        
+        acc_id = data['acc_id'][0]
+        print(f"Using fresh acc_id: {acc_id}")
         
         trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
         code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
@@ -57,7 +55,7 @@ class MoomooBroker:
         
         try:
             ret, data = self.trade_ctx.place_order(
-                acc_id=self.acc_id,
+                acc_id=acc_id,
                 price=effective_price,
                 qty=quantity,
                 code=code,

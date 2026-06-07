@@ -11,8 +11,6 @@ class MoomooBroker:
         self.quote_ctx = None
         self.trade_ctx = None
         self.connected = False
-        self.unlocked = False
-        self.password = MOOMOO_TRADING_PASSWORD
         self.acc_id = None
 
     def connect(self):
@@ -46,7 +44,6 @@ class MoomooBroker:
         if self.trade_ctx:
             self.trade_ctx.close()
         self.connected = False
-        self.unlocked = False
 
     def place_order(self, symbol, side, quantity, price=None):
         if not self.trade_ctx or not self.acc_id:
@@ -59,7 +56,6 @@ class MoomooBroker:
         print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code} @ {effective_price}")
         
         try:
-            # This matches the successful diagnostic call
             ret, data = self.trade_ctx.place_order(
                 acc_id=self.acc_id,
                 price=effective_price,

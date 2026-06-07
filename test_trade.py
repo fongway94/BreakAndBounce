@@ -15,9 +15,10 @@ def test_paper_trade():
         print("Failed to connect to Moomoo")
         return
     
+    # Test parameters
     symbol = "AAPL"
     side = "buy"
-    entry_price = 150.0
+    entry_price = 150.0          # Current market price
     stop_loss = 145.0
     take_profit = 160.0
     
@@ -25,17 +26,24 @@ def test_paper_trade():
     equity = account.get("equity", 50000)
     quantity = calculate_position_size(equity, RISK_PER_TRADE, entry_price, stop_loss)
     
-    print(f"Placing order: {side.upper()} {quantity} {symbol} @ {entry_price}")
+    print(f"Symbol: {symbol}")
+    print(f"Side: {side.upper()}")
+    print(f"Entry Price: {entry_price}")
+    print(f"Quantity: {quantity}")
+    print(f"Stop Loss: {stop_loss}")
+    print(f"Take Profit: {take_profit}")
     
+    # Place order using the same parameters that worked in diagnostic
     order = broker.place_order(
         symbol=symbol,
         side=side,
         quantity=quantity,
-        price=entry_price
+        price=0.0001                    # Small positive price (required by API)
     )
     
     print(f"Order result: {order}")
     
+    # Log the trade
     logger.log_trade(
         symbol=symbol,
         action=side,
@@ -45,6 +53,7 @@ def test_paper_trade():
         notes=f"SL:{stop_loss} TP:{take_profit}"
     )
     
+    # Send Telegram notification
     notifier.notify_trade(
         symbol=symbol,
         action=side,

@@ -58,36 +58,46 @@ class TradingBot:
 
                 if result and isinstance(result, dict):
                     signal = result["signal"]
-                    entry = result["entry"]
+                    entry_price = result["entry"]
                     stop_loss = result["stop_loss"]
                     take_profit = result["take_profit"]
 
-                    print(f"[{datetime.now()}] SIGNAL: {signal.upper()} on {symbol} | SL: {stop_loss} | TP: {take_profit}")
+                    print(f"[{datetime.now()}] SIGNAL: {signal.upper()} on {symbol} | Entry: {entry_price} | SL: {stop_loss} | TP: {take_profit}")
 
                     if self.mode in ["paper", "live"]:
                         account = self.broker.get_account_info()
                         equity = account.get("equity", 50000)
-                        quantity = calculate_position_size(equity, RISK_PER_TRADE, entry, stop_loss)
+
+                        # Calculate quantity based on equity and risk
+                        quantity = calculate_position_size(equity, RISK_PER_TRADE, entry_price, stop_loss)
 
                         order = self.broker.place_order(
-                            symbol, signal, quantity,
-                            paper=(self.mode == "paper")
+                            symbol=symbol,
+                            side=signal,
+                            quantity=quantity,
+                            price=entry_price
                         )
 
                         self.logger.log_trade(
-                            symbol, signal, price=entry,
-                            quantity=quantity, mode=self.mode,
+                            symbol=symbol,
+                            action=signal,
+                            price=entry_price,
+                            quantity=quantity,
+                            mode=self.mode,
                             notes=f"SL:{stop_loss} TP:{take_profit}"
                         )
 
                         self.notifier.notify_trade(
-                            symbol, signal, price=entry,
-                            quantity=quantity, mode=self.mode
+                            symbol=symbol,
+                            action=signal,
+                            price=entry_price,
+                            quantity=quantity,
+                            mode=self.mode
                         )
 
                         self.open_trades.append({
                             "symbol": symbol,
-                            "entry": entry,
+                            "entry": entry_price,
                             "quantity": quantity,
                             "stop_loss": stop_loss,
                             "take_profit": take_profit

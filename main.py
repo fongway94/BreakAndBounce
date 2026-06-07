@@ -57,13 +57,20 @@ class TradingBot:
         end_date = datetime.now().strftime("%Y-%m-%d")
         start_date = (datetime.now() - __import__("datetime").timedelta(days=15)).strftime("%Y-%m-%d")
 
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Running cycle...")
+
         for symbol in SYMBOLS:
             try:
+                print(f"  Fetching data for {symbol}...")
+
                 df_daily = self.broker.get_historical_data(symbol, start_date, end_date, freq="1")
                 df_15m = self.broker.get_historical_data(symbol, start_date, end_date, freq="15")
                 df_5m = self.broker.get_historical_data(symbol, start_date, end_date, freq="5")
 
+                print(f"    Daily: {len(df_daily)} rows | 15m: {len(df_15m)} rows | 5m: {len(df_5m)} rows")
+
                 if df_daily.empty or df_15m.empty or df_5m.empty:
+                    print(f"    Skipping {symbol} (insufficient data)")
                     continue
 
                 result = generate_signal(df_daily, df_15m, df_5m, self.market_open)
@@ -74,7 +81,7 @@ class TradingBot:
                     stop_loss = result["stop_loss"]
                     take_profit = result["take_profit"]
 
-                    print(f"[{datetime.now()}] SIGNAL: {signal.upper()} on {symbol} | Entry: {entry_price} | SL: {stop_loss} | TP: {take_profit}")
+                    print(f"  >>> SIGNAL: {signal.upper()} on {symbol} | Entry: {entry_price} | SL: {stop_loss} | TP: {take_profit}")
 
                     if self.mode in ["paper", "live"]:
                         account = self.broker.get_account_info()
@@ -115,7 +122,7 @@ class TradingBot:
                         self.trades_today += 1
 
             except Exception as e:
-                print(f"Error processing {symbol}: {e}")
+                print(f"  Error processing {symbol}: {e}")
                 continue
 
     def force_close_trades(self):

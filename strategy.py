@@ -1,6 +1,12 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, time
+import pytz
+
+def get_us_eastern_time():
+    """Get current time in US Eastern Time"""
+    eastern = pytz.timezone("US/Eastern")
+    return datetime.now(eastern)
 
 def is_valid_candle(candle):
     return candle['high'] >= max(candle['open'], candle['close']) and \
@@ -87,6 +93,7 @@ def check_reversal_entry(df_5m, direction, level):
     return False
 
 def is_within_trading_window(current_time, market_open_time):
+    """Check if we're within the first 150 minutes after US market open"""
     minutes_since_open = (current_time.hour * 60 + current_time.minute) - (market_open_time.hour * 60 + market_open_time.minute)
     return 0 <= minutes_since_open <= 150
 
@@ -130,7 +137,8 @@ def calculate_mechanical_take_profit(entry_price, direction, stop_loss, risk_rew
         return round(entry_price - (risk * risk_reward), 2)
 
 def generate_signal(df_daily, df_15m, df_5m, market_open_time):
-    current_time = datetime.now().time()
+    current_time = get_us_eastern_time().time()
+    
     if not is_within_trading_window(current_time, market_open_time):
         return None
     

@@ -29,7 +29,6 @@ class MoomooBroker:
             # Get account list
             ret, data = self.trade_ctx.get_acc_list()
             if ret == RET_OK and not data.empty:
-                # Use the first US account
                 self.acc_id = data['acc_id'][0]
                 print(f"Using account ID: {self.acc_id}")
             else:
@@ -71,23 +70,26 @@ class MoomooBroker:
         if not self.trade_ctx or not self.acc_id:
             return {"status": "error", "message": "No trade context or account ID"}
         
+        # For paper trading, unlock is usually not required (per official docs)
         if self.use_real_paper and not self.unlocked:
-            if not self.unlock_trade():
-                return {"status": "error", "message": "Failed to unlock trade"}
+            self.unlock_trade()  # Try but don't block if it fails
         
         trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
         code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
         
-        print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code}")
+        # Use small positive price for market orders (API requirement)
+        effective_price = 0.0001 if price is None or price <= 0 else price
+        
+        print(f"[REAL PAPER ORDER] {side.upper()} {quantity} {code} @ {effective_price}")
         
         try:
             ret, data = self.trade_ctx.place_order(
                 acc_id=self.acc_id,
-                price=price or 0,
+                price=effective_price,
                 qty=quantity,
                 code=code,
                 trd_side=TrdSide.BUY if side.lower() == "buy" else TrdSide.SELL,
-                order_type=OrderType.NORMAL,
+                order_type=OrderType.MARKET,
                 trd_env=trd_env
             )
             if ret == RET_OK:

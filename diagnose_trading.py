@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def diagnose_v4():
+def diagnose_v5():
     host = "127.0.0.1"
     port = 11111
     
-    print("=== Diagnostic v4: Omit price parameter ===")
+    print("=== Diagnostic v5: Use small positive price ===")
     
     try:
         trd_ctx = OpenSecTradeContext(
@@ -23,16 +23,16 @@ def diagnose_v4():
             acc_id = data['acc_id'][0]
             print(f"Using acc_id: {acc_id}")
             
-            # Try without passing price
-            print("\nTrying place_order without price parameter...")
+            # Use a small positive price
+            print("\nTrying place_order with price=0.01...")
             ret_order, data_order = trd_ctx.place_order(
                 acc_id=acc_id,
+                price=0.01,                    # Small positive price
                 qty=1,
                 code="US.AAPL",
                 trd_side=TrdSide.BUY,
                 order_type=OrderType.MARKET,
                 trd_env=TrdEnv.SIMULATE
-                # price parameter is omitted
             )
             if ret_order == RET_OK:
                 print(f"✅ Order placed successfully: {data_order}")
@@ -47,4 +47,4 @@ def diagnose_v4():
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    diagnose_v4()
+    diagnose_v5()

@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def diagnose_v2():
+def diagnose_v4():
     host = "127.0.0.1"
     port = 11111
     
-    print("=== Diagnostic v2: Skip Unlock ===")
+    print("=== Diagnostic v4: Omit price parameter ===")
     
     try:
         trd_ctx = OpenSecTradeContext(
@@ -23,16 +23,16 @@ def diagnose_v2():
             acc_id = data['acc_id'][0]
             print(f"Using acc_id: {acc_id}")
             
-            # Try placing order WITHOUT unlock
-            print("\nTrying place_order directly (no unlock)...")
+            # Try without passing price
+            print("\nTrying place_order without price parameter...")
             ret_order, data_order = trd_ctx.place_order(
                 acc_id=acc_id,
-                price=0,
                 qty=1,
                 code="US.AAPL",
                 trd_side=TrdSide.BUY,
-                order_type=OrderType.NORMAL,
+                order_type=OrderType.MARKET,
                 trd_env=TrdEnv.SIMULATE
+                # price parameter is omitted
             )
             if ret_order == RET_OK:
                 print(f"✅ Order placed successfully: {data_order}")
@@ -47,4 +47,4 @@ def diagnose_v2():
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    diagnose_v2()
+    diagnose_v4()

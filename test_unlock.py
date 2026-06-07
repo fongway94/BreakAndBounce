@@ -26,7 +26,7 @@ def test_unlock():
             trd_ctx.close()
             return
         
-        ret, data = trd_ctx.unlock_trade(password)
+        ret, data = trd_ctx.unlock_trade("374949")
         
         if ret == RET_OK:
             print("✅ Unlock successful!")

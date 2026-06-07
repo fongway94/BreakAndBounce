@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def diagnose_v5():
+def test_another_stock(symbol="TSLA"):
     host = "127.0.0.1"
     port = 11111
     
-    print("=== Diagnostic v5: Use small positive price ===")
+    print(f"=== Testing Order for {symbol} ===")
     
     try:
         trd_ctx = OpenSecTradeContext(
@@ -23,21 +23,21 @@ def diagnose_v5():
             acc_id = data['acc_id'][0]
             print(f"Using acc_id: {acc_id}")
             
-            # Use a small positive price
-            print("\nTrying place_order with price=0.01...")
+            print(f"\nPlacing order for {symbol}...")
             ret_order, data_order = trd_ctx.place_order(
                 acc_id=acc_id,
                 price=0.01,                    # Small positive price
                 qty=1,
-                code="US.AAPL",
+                code=f"US.{symbol}",
                 trd_side=TrdSide.BUY,
                 order_type=OrderType.MARKET,
                 trd_env=TrdEnv.SIMULATE
             )
             if ret_order == RET_OK:
-                print(f"✅ Order placed successfully: {data_order}")
+                print(f"✅ Order placed successfully for {symbol}!")
+                print(f"   Order data: {data_order}")
             else:
-                print(f"❌ Order failed: {data_order}")
+                print(f"❌ Order failed for {symbol}: {data_order}")
         else:
             print(f"Failed to get account list: {data}")
         
@@ -47,4 +47,5 @@ def diagnose_v5():
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    diagnose_v5()
+    # Change the symbol below to test different stocks
+    test_another_stock("TSLA")   # ← Change this to test other stocks (e.g. "NVDA", "MSFT", "GOOGL")

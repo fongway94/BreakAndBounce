@@ -1,5 +1,5 @@
 from config import USE_REAL_PAPER_TRADING
-import futu as ft
+from moomoo import *
 
 def diagnose():
     print("=== Moomoo OpenD Connection Diagnosis ===")
@@ -11,7 +11,7 @@ def diagnose():
     print(f"\nTrying to connect to OpenD at {host}:{port}...")
     
     try:
-        quote_ctx = ft.OpenQuoteContext(host=host, port=port)
+        quote_ctx = OpenQuoteContext(host=host, port=port)
         print("✓ OpenQuoteContext connected successfully")
         quote_ctx.close()
     except Exception as e:
@@ -20,7 +20,7 @@ def diagnose():
     
     print("\nTrying to create OpenUSTradeContext...")
     try:
-        trade_ctx = ft.OpenUSTradeContext(host=host, port=port)
+        trade_ctx = OpenSecTradeContext(filter_trdmarket=TrdMarket.US, host=host, port=port, security_firm=SecurityFirm.FUTUINC)
         print("✓ OpenUSTradeContext created successfully")
         trade_ctx.close()
     except AttributeError as e:

@@ -4,6 +4,19 @@ import time
 from config import MOOMOO_TRADING_PASSWORD, USE_REAL_PAPER_TRADING, DEFAULT_EQUITY
 
 
+def _safe_float(value, default=0.0):
+    """Safely convert value to float. Handles 'N/A', None, empty strings."""
+    if value is None:
+        return default
+    val_str = str(value).strip().upper()
+    if val_str in ("N/A", "", "NONE", "NULL"):
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
 class MoomooBroker:
     def __init__(self, host="127.0.0.1", port=11111, use_real_paper=False):
         self.host = host
@@ -82,11 +95,11 @@ class MoomooBroker:
             if ret == RET_OK and not data.empty:
                 row = data.iloc[0]
                 result = {
-                    "total_assets": float(row.get("total_assets", 0)),
-                    "us_cash": float(row.get("us_cash", 0)),
-                    "usd_net_cash_power": float(row.get("usd_net_cash_power", 0)),
-                    "available_funds": float(row.get("available_funds", 0)),
-                    "frozen_cash": float(row.get("frozen_cash", 0)),
+                    "total_assets": _safe_float(row.get("total_assets")),
+                    "us_cash": _safe_float(row.get("us_cash")),
+                    "usd_net_cash_power": _safe_float(row.get("usd_net_cash_power")),
+                    "available_funds": _safe_float(row.get("available_funds")),
+                    "frozen_cash": _safe_float(row.get("frozen_cash")),
                 }
                 print(f"  [CASH] Total Assets: ${result['total_assets']:.2f} | "
                       f"USD Cash: ${result['us_cash']:.2f} | "
@@ -320,7 +333,7 @@ class MoomooBroker:
         matching = positions[positions['code'] == symbol_code]
 
         if not matching.empty:
-            qty = float(matching.iloc[0].get('qty', 0))
+            qty = _safe_float(matching.iloc[0].get('qty'))
             return qty > 0.0
         return False
 
@@ -335,16 +348,17 @@ class MoomooBroker:
 
         summary = []
         for _, row in positions.iterrows():
-            if float(row.get('qty', 0)) > 0:
+            qty = _safe_float(row.get('qty'))
+            if qty > 0:
                 summary.append({
                     "symbol": str(row.get('code', '')).replace("US.", ""),
-                    "qty": float(row.get('qty', 0)),
-                    "can_sell_qty": float(row.get('can_sell_qty', 0)),
-                    "cost_price": float(row.get('cost_price', 0)),
-                    "market_val": float(row.get('market_val', 0)),
-                    "unrealized_pl": float(row.get('unrealized_pl', 0)),
+                    "qty": qty,
+                    "can_sell_qty": _safe_float(row.get('can_sell_qty')),
+                    "cost_price": _safe_float(row.get('cost_price')),
+                    "market_val": _safe_float(row.get('market_val')),
+                    "unrealized_pl": _safe_float(row.get('unrealized_pl')),
                     "position_side": str(row.get('position_side', '')),
-                    "nominal_price": float(row.get('nominal_price', 0)),
+                    "nominal_price": _safe_float(row.get('nominal_price')),
                 })
         print(f"  [POSITION] Found {len(summary)} open positions from account")
         return summary
@@ -361,7 +375,7 @@ class MoomooBroker:
 
         symbols = set()
         for _, row in positions.iterrows():
-            if float(row.get('qty', 0)) > 0:
+            if _safe_float(row.get('qty')) > 0:
                 symbol = str(row.get('code', '')).replace("US.", "")
                 symbols.add(symbol)
 

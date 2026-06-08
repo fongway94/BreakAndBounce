@@ -151,6 +151,7 @@ class TradingBot:
 
                         self.open_trades.append({
                             "symbol": symbol,
+                            "signal": signal,
                             "entry": entry_price,
                             "quantity": quantity,
                             "stop_loss": stop_loss,

@@ -38,7 +38,7 @@ class TradingBot:
         self.trades_today = 0
         self.is_running = False
         self.open_trades = []
-        self.last_position_sync = None
+        self.current_positions = set()   # Cached symbols with open positions (rate limit optimization)
 
     def start(self):
         print(f"=== Break & Bounce Bot Started | Mode: {self.mode.upper()} ===")
@@ -115,7 +115,10 @@ class TradingBot:
             self.trades_today = 0
         self.last_date = current_date
 
-        # === NEW: Sync open_trades from real account positions (prevents stale memory state) ===
+        # === Rate Limit Optimization: Fetch positions ONCE per cycle ===
+        self.current_positions = self.broker.get_symbols_with_positions()
+
+        # === Sync open_trades from real account positions ===
         self.sync_open_trades_from_positions()
 
         # Check daily loss limit
@@ -137,9 +140,8 @@ class TradingBot:
 
         for symbol in SYMBOLS:
             try:
-                # === NEW: Authoritative duplicate prevention using Moomoo position API ===
-                # This prevents the 5-minute signal duplication bug mentioned in the issue.
-                if self.broker.has_open_position(symbol):
+                # === Optimized duplicate check using cached positions (1 API call per cycle) ===
+                if symbol in self.current_positions:
                     print(f"  Skipping {symbol} (already have open position in account)")
                     continue
 

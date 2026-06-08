@@ -8,8 +8,8 @@ Video Strategy Rules (exact):
                       - Bullish breakout → Hammer (lower wick) or Bullish Engulfing
                       - Bearish breakout → Inverted Hammer (upper wick) or Bearish Engulfing
   Entry:
-    Hammer →           enter at break of hammer HIGH
-    Inverted Hammer →  enter at break of inverted hammer LOW
+    Hammer →           enter immediately at candle close (current market price when hammer finishes forming)
+    Inverted Hammer →  enter immediately at candle close (current market price when inv hammer finishes forming)
     Bullish Engulfing → enter at HIGH of previous (smaller) candle
     Bearish Engulfing → enter at LOW of previous (smaller) candle
   Stop Loss:
@@ -104,24 +104,23 @@ def is_engulfing(prev_candle, current_candle, direction):
 
     Video: "This large candle here engulfs the previous smaller candle,
             meaning that the low of the candle is lower than the previous candle's low,
-            and that the high of the candle is higher than the previous candle's high."
+            and that the high of the candle is higher than the previous candle's high.
+            So, fully engulfing the previous smaller candle."
     """
     if not is_valid_candle(prev_candle) or not is_valid_candle(current_candle):
         return False
-    prev_body = abs(prev_candle['close'] - prev_candle['open'])
-    curr_body = abs(current_candle['close'] - current_candle['open'])
-    if curr_body < prev_body * 0.8:
+
+    # Full wick engulfing: current candle's range completely covers previous candle's range
+    if not (current_candle['high'] > prev_candle['high'] and
+            current_candle['low'] < prev_candle['low']):
         return False
+
     if direction == "bullish":
         return (prev_candle['close'] < prev_candle['open'] and          # prev is red
-                current_candle['close'] > current_candle['open'] and    # current is green
-                current_candle['close'] >= prev_candle['open'] and
-                current_candle['open'] <= prev_candle['close'])
+                current_candle['close'] > current_candle['open'])       # current is green
     elif direction == "bearish":
         return (prev_candle['close'] > prev_candle['open'] and          # prev is green
-                current_candle['close'] < current_candle['open'] and    # current is red
-                current_candle['close'] <= prev_candle['open'] and
-                current_candle['open'] >= prev_candle['close'])
+                current_candle['close'] < current_candle['open'])       # current is red
     return False
 
 
@@ -131,10 +130,11 @@ def has_preceding_move(df_5m, direction, lookback=3):
     """
     Check if there's a clear directional move BEFORE the current candle.
 
-    Video (Hammer):   "This must come after a clear red negative movement."
-    Video (Inv Hammer): "comes after a clear green positive movement."
+    Video (Hammer):      "This must come after a clear red negative movement."
+    Video (Inv Hammer):  "comes after a clear green positive movement."
 
-    We check the candles BEFORE the last candle (i.e., df_5m[-lookback-1:-1]).
+    "Clear" means a meaningful move, not just 1 candle.
+    We require MAJORITY of lookback candles to be in the expected direction.
     """
     if len(df_5m) < lookback + 1:
         return False
@@ -142,13 +142,13 @@ def has_preceding_move(df_5m, direction, lookback=3):
     recent = df_5m.iloc[-(lookback + 1):-1]
 
     if direction == "bullish":
-        # Need at least 1 red (negative) candle in the lookback
+        # Need majority of preceding candles to be red (negative)
         red_count = sum(1 for _, c in recent.iterrows() if c['close'] < c['open'])
-        return red_count >= 1
+        return red_count >= (lookback / 2)
     elif direction == "bearish":
-        # Need at least 1 green (positive) candle in the lookback
+        # Need majority of preceding candles to be green (positive)
         green_count = sum(1 for _, c in recent.iterrows() if c['close'] > c['open'])
-        return green_count >= 1
+        return green_count >= (lookback / 2)
     return False
 
 
@@ -237,12 +237,13 @@ def check_reversal_entry(df_5m, direction, level):
         # ---- Bullish breakout → Hammer or Bullish Engulfing ----
 
         if is_hammer(current):
-            # Video: "enter at the break of this 5-minute hammer candle"
+            # Video live trade: "I will enter immediately at the candle close"
+            # = enter at current market price when the hammer candle finishes forming
             # Video: "stop loss would be set at the low"
             return {
                 "pattern": "hammer",
-                "entry": current['high'],          # break of hammer high
-                "sl_ref": current['low'],           # SL at hammer low
+                "entry": current['close'],          # enter at candle close (current market price)
+                "sl_ref": current['low'],            # SL at hammer low
             }
 
         if is_engulfing(previous, current, "bullish"):
@@ -258,12 +259,12 @@ def check_reversal_entry(df_5m, direction, level):
         # ---- Bearish breakout → Inverted Hammer or Bearish Engulfing ----
 
         if is_inverted_hammer(current):
-            # Video: "entry would be at the break of the candle"
+            # Video: enter immediately at the candle close (same as hammer logic)
             # Video: "stop loss slightly above the high"
             return {
                 "pattern": "inverted_hammer",
-                "entry": current['low'],            # break of inverted hammer low
-                "sl_ref": current['high'],          # SL above inverted hammer high
+                "entry": current['close'],          # enter at candle close (current market price)
+                "sl_ref": current['high'],           # SL above inverted hammer high
             }
 
         if is_engulfing(previous, current, "bearish"):

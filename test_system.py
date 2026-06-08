@@ -71,23 +71,31 @@ def test_inverted_hammer_bearish_only():
 
 
 def test_engulfing():
-    print("\n=== Testing Engulfing ===")
+    print("\n=== Testing Engulfing (Full Wick) ===")
 
-    # Bullish engulfing: prev red, current green, current engulfs prev
+    # Bullish engulfing: current fully engulfs previous (wicks included)
+    # prev: red candle, range 99-103
+    # curr: green candle, range 98-104 (fully covers prev range)
     prev = {'open': 102, 'high': 103, 'low': 99, 'close': 100}
-    curr = {'open': 99.5, 'high': 104, 'low': 99, 'close': 103}
+    curr = {'open': 99.5, 'high': 104, 'low': 98, 'close': 103}
 
     assert is_engulfing(prev, curr, "bullish") == True, "Bullish engulfing not detected"
     assert is_engulfing(prev, curr, "bearish") == False, "Bullish engulfing detected as bearish"
-    print("  ✓ Bullish engulfing detected correctly")
+    print("  ✓ Bullish engulfing detected (full wick engulfing)")
 
-    # Bearish engulfing: prev green, current red, current engulfs prev
-    prev2 = {'open': 100, 'high': 103, 'low': 99, 'close': 102}
-    curr2 = {'open': 102.5, 'high': 104, 'low': 98, 'close': 99}
+    # Non-engulfing: current does NOT fully cover previous range
+    prev2 = {'open': 100, 'high': 105, 'low': 99, 'close': 102}
+    curr2 = {'open': 101, 'high': 104, 'low': 100, 'close': 103}  # high(104) < prev high(105)
+    assert is_engulfing(prev2, curr2, "bullish") == False, "Should reject — not full engulfing"
+    print("  ✓ Rejected partial engulfing (high doesn't exceed prev high)")
 
-    assert is_engulfing(prev2, curr2, "bearish") == True, "Bearish engulfing not detected"
-    assert is_engulfing(prev2, curr2, "bullish") == False, "Bearish engulfing detected as bullish"
-    print("  ✓ Bearish engulfing detected correctly")
+    # Bearish engulfing: current fully engulfs previous (wicks included)
+    prev3 = {'open': 100, 'high': 103, 'low': 99, 'close': 102}
+    curr3 = {'open': 102.5, 'high': 104, 'low': 98, 'close': 99}
+
+    assert is_engulfing(prev3, curr3, "bearish") == True, "Bearish engulfing not detected"
+    assert is_engulfing(prev3, curr3, "bullish") == False, "Bearish engulfing detected as bullish"
+    print("  ✓ Bearish engulfing detected (full wick engulfing)")
 
 
 # ==================== PRECEDING MOVE TEST ====================

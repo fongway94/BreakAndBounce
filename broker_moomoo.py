@@ -348,3 +348,23 @@ class MoomooBroker:
                 })
         print(f"  [POSITION] Found {len(summary)} open positions from account")
         return summary
+
+    def get_symbols_with_positions(self):
+        """
+        Returns a SET of symbols that currently have open positions.
+        This makes only ONE API call per cycle instead of one per symbol.
+        This is the key optimization for staying under Moomoo rate limits.
+        """
+        positions = self.get_positions()  # No symbol filter → gets ALL positions at once
+        if positions.empty:
+            return set()
+
+        symbols = set()
+        for _, row in positions.iterrows():
+            if float(row.get('qty', 0)) > 0:
+                symbol = str(row.get('code', '')).replace("US.", "")
+                symbols.add(symbol)
+
+        if symbols:
+            print(f"  [POSITION] Cached positions for symbols: {symbols}")
+        return symbols

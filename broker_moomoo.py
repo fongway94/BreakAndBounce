@@ -1,7 +1,7 @@
 from moomoo import *
 import pandas as pd
 import time
-from config import MOOMOO_TRADING_PASSWORD, USE_REAL_PAPER_TRADING
+from config import MOOMOO_TRADING_PASSWORD, USE_REAL_PAPER_TRADING, DEFAULT_EQUITY
 
 
 class MoomooBroker:
@@ -17,10 +17,8 @@ class MoomooBroker:
     def connect(self):
         """Connect to openD and initialize both quote and trade contexts."""
         try:
-            # Quote context (for historical data)
             self.quote_ctx = OpenQuoteContext(host=self.host, port=self.port)
 
-            # Trade context (for placing orders)
             self.trade_ctx = OpenSecTradeContext(
                 filter_trdmarket=TrdMarket.US,
                 host=self.host,
@@ -28,7 +26,6 @@ class MoomooBroker:
                 security_firm=SecurityFirm.FUTUINC
             )
 
-            # Get account ID once
             ret, data = self.trade_ctx.get_acc_list()
             if ret == RET_OK and not data.empty:
                 self.acc_id = data['acc_id'][0]
@@ -53,9 +50,107 @@ class MoomooBroker:
         self.connected = False
         print("Disconnected from Moomoo openD")
 
+    # ==================== CASH BALANCE CHECK (Feature 2) ====================
+
+    def get_cash_balance(self):
+        """
+        Get account funds from Moomoo API.
+
+        Uses: accinfo_query() — Moomoo OpenAPI v10.7
+        Returns dict with cash info, or None on failure.
+
+        Key fields (per API doc):
+          us_cash             — USD Cash available
+          usd_net_cash_power  — USD Cash Buying Power (cash only, no margin)
+          total_assets        — Total Net Assets
+          available_funds     — Available funds
+          frozen_cash         — Funds on Hold
+        """
+        if not self.trade_ctx or not self.acc_id:
+            print("Warning: No trade context for cash balance query")
+            return None
+
+        trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
+
+        try:
+            ret, data = self.trade_ctx.accinfo_query(
+                trd_env=trd_env,
+                acc_id=self.acc_id,
+                refresh_cache=True
+            )
+
+            if ret == RET_OK and not data.empty:
+                row = data.iloc[0]
+                result = {
+                    "total_assets": float(row.get("total_assets", 0)),
+                    "us_cash": float(row.get("us_cash", 0)),
+                    "usd_net_cash_power": float(row.get("usd_net_cash_power", 0)),
+                    "available_funds": float(row.get("available_funds", 0)),
+                    "frozen_cash": float(row.get("frozen_cash", 0)),
+                }
+                print(f"  [CASH] Total Assets: ${result['total_assets']:.2f} | "
+                      f"USD Cash: ${result['us_cash']:.2f} | "
+                      f"Cash Buying Power: ${result['usd_net_cash_power']:.2f}")
+                return result
+            else:
+                print(f"  [CASH] accinfo_query failed: {data}")
+                return None
+
+        except Exception as e:
+            print(f"  [CASH] Error querying funds: {e}")
+            return None
+
+    def check_cash_before_order(self, symbol, quantity, price):
+        """
+        Check if the order value fits within USD Cash Buying Power.
+        Adjusts quantity DOWN if not enough cash. Never uses margin.
+
+        Returns: (allowed_quantity, cash_info)
+          - allowed_quantity: may be reduced from original quantity
+          - cash_info: the raw fund data from API
+        """
+        cash_info = self.get_cash_balance()
+
+        if cash_info is None:
+            # Cannot verify — reject order
+            print(f"  [CASH CHECK] Cannot verify cash balance. Order REJECTED.")
+            return 0, None
+
+        order_value = price * quantity
+        cash_power = cash_info["usd_net_cash_power"]
+
+        if order_value <= cash_power:
+            # Enough cash — order is fine
+            print(f"  [CASH CHECK] ✅ Order ${order_value:.2f} <= Cash Power ${cash_power:.2f} — OK")
+            return quantity, cash_info
+        else:
+            # Not enough cash — reduce quantity to fit
+            if cash_power <= 0 or price <= 0:
+                print(f"  [CASH CHECK] ❌ No cash buying power. Order REJECTED.")
+                return 0, cash_info
+
+            max_quantity = cash_power / price
+            max_quantity = round(max_quantity, 2)  # 2 decimal places (fractional)
+
+            if max_quantity < 0.01:
+                print(f"  [CASH CHECK] ❌ Not enough cash even for 0.01 shares. Order REJECTED.")
+                return 0, cash_info
+
+            print(f"  [CASH CHECK] ⚠️ Order ${order_value:.2f} > Cash Power ${cash_power:.2f}")
+            print(f"  [CASH CHECK] Reducing quantity: {quantity} → {max_quantity} (cash only, no margin)")
+            return max_quantity, cash_info
+
+    # ==================== PLACE ORDER ====================
+
     def place_order(self, symbol, side, quantity, price=None):
         """
-        Place a market order. Reuses the trade context created in connect().
+        Place a market order with cash balance check.
+
+        Flow:
+          1. Check cash balance via accinfo_query()
+          2. If not enough cash → reduce quantity (never use margin)
+          3. If still not enough for 0.01 shares → reject
+          4. Place order
 
         Args:
             symbol:    e.g. "AAPL"
@@ -69,6 +164,17 @@ class MoomooBroker:
         trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
         code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
         effective_price = 0.0001 if price is None or price <= 0 else price
+
+        # Cash balance check (only for BUY orders)
+        if side.lower() == "buy":
+            allowed_qty, cash_info = self.check_cash_before_order(symbol, quantity, effective_price)
+
+            if allowed_qty <= 0:
+                return {"status": "rejected", "message": "Insufficient cash balance (no margin)"}
+
+            if allowed_qty < quantity:
+                print(f"  [ORDER] Quantity adjusted: {quantity} → {allowed_qty} due to cash limit")
+                quantity = allowed_qty
 
         print(f"[ORDER] {side.upper()} {quantity} {code} @ {effective_price} (env={trd_env})")
 
@@ -93,6 +199,8 @@ class MoomooBroker:
         except Exception as e:
             print(f"Order error: {e}")
             return {"status": "error", "message": str(e)}
+
+    # ==================== HISTORICAL DATA ====================
 
     def get_historical_data(self, symbol, start_date, end_date, freq="1"):
         """
@@ -142,25 +250,24 @@ class MoomooBroker:
             print(f"Data fetch error: {e}")
             return pd.DataFrame()
 
+    # ==================== ACCOUNT INFO ====================
+
     def get_account_info(self):
         """
-        Get real account info from Moomoo.
+        Get account info using accinfo_query().
         Falls back to defaults if API call fails.
         """
-        from config import DEFAULT_EQUITY
-        try:
-            if self.trade_ctx and self.acc_id:
-                ret, data = self.trade_ctx.accinfo_get_funds()
-                if ret == RET_OK and not data.empty:
-                    row = data.iloc[0]
-                    return {
-                        "cash": float(row.get('cash', DEFAULT_EQUITY)),
-                        "equity": float(row.get('total_assets', DEFAULT_EQUITY)),
-                    }
-        except Exception as e:
-            print(f"Warning: Could not fetch real account info: {e}")
+        cash_info = self.get_cash_balance()
+        if cash_info:
+            return {
+                "cash": cash_info["us_cash"],
+                "equity": cash_info["total_assets"],
+                "cash_power": cash_info["usd_net_cash_power"],
+                "available_funds": cash_info["available_funds"],
+            }
 
-        return {"cash": DEFAULT_EQUITY, "equity": DEFAULT_EQUITY}
+        print("Warning: Using default equity values (could not fetch real data)")
+        return {"cash": DEFAULT_EQUITY, "equity": DEFAULT_EQUITY, "cash_power": DEFAULT_EQUITY, "available_funds": DEFAULT_EQUITY}
 
     def _get_possible_codes(self, symbol):
         """Return list of possible Futu codes to try"""

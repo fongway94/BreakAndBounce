@@ -101,15 +101,21 @@ def is_near_end_of_window(current_time, market_open_time, buffer_minutes=10):
     minutes_since_open = (current_time.hour * 60 + current_time.minute) - (market_open_time.hour * 60 + market_open_time.minute)
     return minutes_since_open >= (150 - buffer_minutes)
 
-def calculate_position_size(account_equity, risk_percent, entry_price, stop_loss_price, min_lot=1):
+def calculate_position_size(account_equity, risk_percent, entry_price, stop_loss_price, min_lot=0.01):
+    """Calculate position size with support for fractional shares (max 2 decimal places)"""
     if entry_price == stop_loss_price:
-        return min_lot
+        return round(min_lot, 2)
+    
     risk_per_share = abs(entry_price - stop_loss_price)
     risk_amount = account_equity * risk_percent
+    
     if risk_per_share <= 0:
-        return min_lot
+        return round(min_lot, 2)
+    
     size = risk_amount / risk_per_share
-    return max(min_lot, round(size))
+    
+    # Allow fractional shares, round to 2 decimal places
+    return round(max(min_lot, size), 2)
 
 def check_daily_loss_limit(daily_pnl, max_daily_loss):
     return daily_pnl <= -max_daily_loss

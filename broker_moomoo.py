@@ -268,36 +268,3 @@ class MoomooBroker:
 
         print("Warning: Using default equity values (could not fetch real data)")
         return {"cash": DEFAULT_EQUITY, "equity": DEFAULT_EQUITY, "cash_power": DEFAULT_EQUITY, "available_funds": DEFAULT_EQUITY}
-
-    def _get_possible_codes(self, symbol):
-        """Return list of possible Futu codes to try"""
-        symbol = symbol.upper()
-        
-        if symbol in ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "AMD"]:
-            return [f"US.{symbol}"]
-        
-        # US Indices - try multiple formats
-        if symbol in ["US100", "IXIC"]:
-            return ["US.NASDAQ", "US.IX.NASDAQ100", "US.US100", "US.IX.NASDAQ"]
-        
-        if symbol in ["US500", "SPX"]:
-            return ["US.SP", "US.IX.SPX", "US.US500", "US.IX.SP"]
-        
-        # European Indices
-        if symbol == "DE40":
-            return ["DE.DAX", "DE.IX.DAX", "DE.IX.DAX30"]
-        
-        if symbol == "UK100":
-            return ["UK.FTSE", "UK.IX.FTSE"]
-        
-        if symbol == "FR40":
-            return ["FR.CAC", "FR.IX.CAC"]
-        
-        # Hong Kong
-        if symbol == "HKHSI":
-            return ["HK.HS", "HK.IX.HS"]
-        
-        return [f"US.{symbol}"]
-
-   
-

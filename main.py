@@ -92,9 +92,15 @@ class TradingBot:
 
         for symbol in SYMBOLS:
             try:
-                # Check if we already have an open trade for this symbol
+                # === NEW: Authoritative duplicate prevention using Moomoo position API ===
+                # This prevents the 5-minute signal duplication bug mentioned in the issue.
+                if self.broker.has_open_position(symbol):
+                    print(f"  Skipping {symbol} (already have open position in account)")
+                    continue
+
+                # Also keep the in-memory check as a fast secondary filter
                 if any(trade['symbol'] == symbol for trade in self.open_trades):
-                    print(f"  Skipping {symbol} (trade already open)")
+                    print(f"  Skipping {symbol} (trade already tracked in memory)")
                     continue
 
                 print(f"  Fetching data for {symbol}...")

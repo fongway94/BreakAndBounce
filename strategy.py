@@ -78,7 +78,7 @@ def is_hammer(candle):
         return False
     lower_wick = min(candle['open'], candle['close']) - candle['low']
     upper_wick = candle['high'] - max(candle['open'], candle['close'])
-    return lower_wick > 2 * body and upper_wick < body * 1.0
+    return lower_wick > 2 * body and upper_wick <= body * 1.0
 
 
 def is_inverted_hammer(candle):
@@ -95,7 +95,7 @@ def is_inverted_hammer(candle):
         return False
     lower_wick = min(candle['open'], candle['close']) - candle['low']
     upper_wick = candle['high'] - max(candle['open'], candle['close'])
-    return upper_wick > 2 * body and lower_wick < body * 1.0
+    return upper_wick > 2 * body and lower_wick <= body * 1.0
 
 
 def is_engulfing(prev_candle, current_candle, direction):

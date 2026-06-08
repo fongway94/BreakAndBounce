@@ -323,3 +323,28 @@ class MoomooBroker:
             qty = float(matching.iloc[0].get('qty', 0))
             return qty > 0.0
         return False
+
+    def get_open_positions_summary(self):
+        """
+        Return a clean list of current open positions (authoritative from API).
+        Used for syncing open_trades and for dashboard display.
+        """
+        positions = self.get_positions()
+        if positions.empty:
+            return []
+
+        summary = []
+        for _, row in positions.iterrows():
+            if float(row.get('qty', 0)) > 0:
+                summary.append({
+                    "symbol": str(row.get('code', '')).replace("US.", ""),
+                    "qty": float(row.get('qty', 0)),
+                    "can_sell_qty": float(row.get('can_sell_qty', 0)),
+                    "cost_price": float(row.get('cost_price', 0)),
+                    "market_val": float(row.get('market_val', 0)),
+                    "unrealized_pl": float(row.get('unrealized_pl', 0)),
+                    "position_side": str(row.get('position_side', '')),
+                    "nominal_price": float(row.get('nominal_price', 0)),
+                })
+        print(f"  [POSITION] Found {len(summary)} open positions from account")
+        return summary

@@ -92,6 +92,11 @@ class TradingBot:
 
         for symbol in SYMBOLS:
             try:
+                # Check if we already have an open trade for this symbol
+                if any(trade['symbol'] == symbol for trade in self.open_trades):
+                    print(f"  Skipping {symbol} (trade already open)")
+                    continue
+
                 print(f"  Fetching data for {symbol}...")
 
                 df_daily = self.broker.get_historical_data(symbol, start_date, end_date, freq="1D")

@@ -272,3 +272,54 @@ class MoomooBroker:
 
         print("Warning: Using default equity values (could not fetch real data)")
         return {"cash": DEFAULT_EQUITY, "equity": DEFAULT_EQUITY, "cash_power": DEFAULT_EQUITY, "available_funds": DEFAULT_EQUITY}
+
+    # ==================== POSITION CHECK (NEW - Prevents Duplicate Entries) ====================
+
+    def get_positions(self, symbol=None):
+        """
+        Query current open positions using position_list_query() — Moomoo OpenAPI v10.7.
+
+        This is the source of truth to prevent duplicate trades.
+        Returns DataFrame with position details (code, qty, position_side, etc.).
+        """
+        if not self.trade_ctx or not self.acc_id:
+            print("Warning: No trade context for position query")
+            return pd.DataFrame()
+
+        trd_env = TrdEnv.SIMULATE if self.use_real_paper else TrdEnv.REAL
+
+        try:
+            code_filter = f"US.{symbol}" if symbol else ""
+            ret, data = self.trade_ctx.position_list_query(
+                code=code_filter,
+                trd_env=trd_env,
+                acc_id=self.acc_id,
+                refresh_cache=True
+            )
+
+            if ret == RET_OK:
+                return data
+            else:
+                print(f"  [POSITION] position_list_query failed: {data}")
+                return pd.DataFrame()
+
+        except Exception as e:
+            print(f"  [POSITION] Error querying positions: {e}")
+            return pd.DataFrame()
+
+    def has_open_position(self, symbol):
+        """
+        Check if the account already holds a position in the given symbol.
+        Uses the official position_list_query API as the authoritative source.
+        """
+        positions = self.get_positions(symbol)
+        if positions.empty:
+            return False
+
+        symbol_code = f"US.{symbol}" if not symbol.startswith("US.") else symbol
+        matching = positions[positions['code'] == symbol_code]
+
+        if not matching.empty:
+            qty = float(matching.iloc[0].get('qty', 0))
+            return qty > 0.0
+        return False

@@ -38,6 +38,7 @@ class TradingBot:
         self.trades_today = 0
         self.is_running = False
         self.open_trades = []
+        self.last_position_sync = None
 
     def start(self):
         print(f"=== Break & Bounce Bot Started | Mode: {self.mode.upper()} ===")
@@ -64,6 +65,47 @@ class TradingBot:
         total_min = self.market_open.hour * 60 + self.market_open.minute + 150
         return f"{total_min // 60:02d}:{total_min % 60:02d}"
 
+    def sync_open_trades_from_positions(self):
+        """
+        Sync self.open_trades with the actual positions from the broker API.
+        This ensures the in-memory list always reflects reality.
+        Called at the start of every cycle.
+        """
+        try:
+            real_positions = self.broker.get_open_positions_summary()
+            if not real_positions:
+                if self.open_trades:
+                    print("  [SYNC] No open positions in account — clearing in-memory trades")
+                    self.open_trades = []
+                return
+
+            # Rebuild open_trades based on real positions
+            new_open_trades = []
+            for pos in real_positions:
+                # Try to preserve existing metadata if available
+                existing = next((t for t in self.open_trades if t['symbol'] == pos['symbol']), None)
+                if existing:
+                    new_open_trades.append(existing)
+                else:
+                    # New position detected (e.g. from previous session or manual trade)
+                    new_open_trades.append({
+                        "symbol": pos['symbol'],
+                        "signal": "buy" if pos['position_side'] == "LONG" else "sell",
+                        "entry": pos['cost_price'],
+                        "quantity": pos['qty'],
+                        "stop_loss": 0,
+                        "take_profit": 0,
+                        "pattern": "synced_from_account",
+                    })
+
+            if len(new_open_trades) != len(self.open_trades):
+                print(f"  [SYNC] Synced {len(new_open_trades)} open positions from account")
+
+            self.open_trades = new_open_trades
+
+        except Exception as e:
+            print(f"  [SYNC] Error syncing positions: {e}")
+
     def run_cycle(self):
         """Main trading cycle — runs every 60 seconds."""
         # Reset daily stats on new day
@@ -72,6 +114,9 @@ class TradingBot:
             self.daily_pnl = 0
             self.trades_today = 0
         self.last_date = current_date
+
+        # === NEW: Sync open_trades from real account positions (prevents stale memory state) ===
+        self.sync_open_trades_from_positions()
 
         # Check daily loss limit
         if check_daily_loss_limit(self.daily_pnl, MAX_DAILY_LOSS):

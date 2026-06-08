@@ -130,7 +130,11 @@ class MoomooBroker:
                 return 0, cash_info
 
             max_quantity = cash_power / price
-            max_quantity = round(max_quantity, 2)  # 2 decimal places (fractional)
+            max_quantity = int(max_quantity * 100) / 100  # Floor to 2 decimal places (never round up)
+
+            # Safety check: ensure rounded quantity still fits within cash
+            if max_quantity * price > cash_power:
+                max_quantity = int(max_quantity * 100 - 1) / 100  # reduce by 0.01
 
             if max_quantity < 0.01:
                 print(f"  [CASH CHECK] ❌ Not enough cash even for 0.01 shares. Order REJECTED.")

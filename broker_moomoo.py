@@ -94,10 +94,22 @@ class MoomooBroker:
 
             if ret == RET_OK and not data.empty:
                 row = data.iloc[0]
+
+                # Primary cash power
+                usd_net_cash_power = _safe_float(row.get("usd_net_cash_power"))
+
+                # Fallback for paper trading margin accounts
+                # Only use when in paper mode and cash power is 0
+                if self.use_real_paper and usd_net_cash_power <= 0:
+                    fallback_power = _safe_float(row.get("power"))
+                    if fallback_power > 0:
+                        print("  [CASH] Using 'power' field as fallback (paper margin account)")
+                        usd_net_cash_power = fallback_power
+
                 result = {
                     "total_assets": _safe_float(row.get("total_assets")),
                     "us_cash": _safe_float(row.get("us_cash")),
-                    "usd_net_cash_power": _safe_float(row.get("usd_net_cash_power")),
+                    "usd_net_cash_power": usd_net_cash_power,
                     "available_funds": _safe_float(row.get("available_funds")),
                     "frozen_cash": _safe_float(row.get("frozen_cash")),
                 }
@@ -139,8 +151,13 @@ class MoomooBroker:
         else:
             # Not enough cash — reduce quantity to fit
             if cash_power <= 0 or price <= 0:
-                print(f"  [CASH CHECK] ❌ No cash buying power. Order REJECTED.")
-                return 0, cash_info
+                if self.use_real_paper:
+                    # In paper mode, allow proceeding even with 0 cash power (margin account)
+                    print(f"  [CASH CHECK] ⚠️ Paper margin account detected. Proceeding with order (no cash limit enforced).")
+                    return quantity, cash_info
+                else:
+                    print(f"  [CASH CHECK] ❌ No cash buying power. Order REJECTED.")
+                    return 0, cash_info
 
             max_quantity = cash_power / price
             max_quantity = int(max_quantity * 100) / 100  # Floor to 2 decimal places (never round up)

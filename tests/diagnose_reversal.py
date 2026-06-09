@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 """
-Improved Diagnostic Script - Uses full dataset properly
+Detailed Diagnostic - Why reversal is rejected on breakout days
 """
 
 from broker_moomoo import MoomooBroker
@@ -15,7 +15,11 @@ from strategy import (
     get_previous_day_range,
     has_recent_breakout,
     check_reversal_entry,
-    align_timeframes
+    align_timeframes,
+    has_preceding_move,
+    is_hammer,
+    is_inverted_hammer,
+    is_engulfing
 )
 from config import USE_REAL_PAPER_TRADING
 from datetime import datetime, timedelta
@@ -24,9 +28,9 @@ SYMBOL = "TSLA"
 DAYS = 90
 
 def diagnose():
-    print(f"\n{'='*80}")
-    print(f"IMPROVED DIAGNOSTIC — {SYMBOL} | Last {DAYS} days")
-    print(f"{'='*80}\n")
+    print(f"\n{'='*85}")
+    print(f"DETAILED REVERSAL DIAGNOSTIC — {SYMBOL}")
+    print(f"{'='*85}\n")
 
     broker = MoomooBroker(use_real_paper=USE_REAL_PAPER_TRADING)
     if not broker.connect():
@@ -36,33 +40,22 @@ def diagnose():
     end_date = datetime.now().strftime("%Y-%m-%d")
     start_date = (datetime.now() - timedelta(days=DAYS)).strftime("%Y-%m-%d")
 
-    # Fetch full data (no per-day slicing yet)
     df_daily = broker.get_historical_data(SYMBOL, start_date, end_date, freq="1D")
     df_15m = broker.get_historical_data(SYMBOL, start_date, end_date, freq="15")
     df_5m = broker.get_historical_data(SYMBOL, start_date, end_date, freq="5")
 
-    if df_daily.empty or df_15m.empty or df_5m.empty:
-        print("Insufficient data")
-        return
-
-    print(f"Daily candles: {len(df_daily)} | 15m: {len(df_15m)} | 5m: {len(df_5m)}\n")
-
     trading_days = df_daily['time_key'].dt.date.unique()
-    breakout_count = 0
-    reversal_count = 0
+    breakout_days = []
 
     for i, day in enumerate(trading_days):
         if i < 1:
-            continue  # Need at least 1 previous day for the box
+            continue
 
-        # Get daily data up to current day
         day_daily = df_daily[df_daily['time_key'].dt.date <= day]
-
         prev_high, prev_low = get_previous_day_range(day_daily)
         if prev_high is None:
             continue
 
-        # Get 15m and 5m data for this day
         day_15m = df_15m[df_15m['time_key'].dt.date == day]
         day_5m = df_5m[df_5m['time_key'].dt.date == day]
 
@@ -73,23 +66,33 @@ def diagnose():
         if direction is None:
             continue
 
-        breakout_count += 1
         level = prev_high if direction == "bullish" else prev_low
-
-        # Align and check reversal
         _, _, aligned_5m = align_timeframes(day_daily, day_15m, day_5m)
-        if aligned_5m is None:
+
+        if aligned_5m is None or len(aligned_5m) < 5:
             continue
 
-        reversal = check_reversal_entry(aligned_5m, direction, level)
-        if reversal:
-            reversal_count += 1
-            print(f"[{day}] VALID SETUP → {reversal['pattern'].upper()} | {direction}")
+        breakout_days.append(day)
 
-    print(f"\n{'='*80}")
-    print(f"Days with 15m breakout : {breakout_count}")
-    print(f"Days with valid reversal: {reversal_count}")
-    print(f"{'='*80}\n")
+        # Detailed reversal check
+        current = aligned_5m.iloc[-1]
+        tolerance = level * 0.0015
+        near_level = (abs(current['low'] - level) < tolerance or
+                      abs(current['high'] - level) < tolerance or
+                      abs(current['close'] - level) < tolerance)
+
+        preceding_ok = has_preceding_move(aligned_5m, direction)
+
+        is_h = is_hammer(current) if direction == "bullish" else False
+        is_inv = is_inverted_hammer(current) if direction == "bearish" else False
+        is_eng = is_engulfing(aligned_5m.iloc[-2], current, direction) if len(aligned_5m) >= 2 else False
+
+        print(f"[{day}] Breakout: {direction.upper()} | Near level: {near_level} | "
+              f"Preceding move: {preceding_ok} | Hammer: {is_h} | Engulfing: {is_eng}")
+
+    print(f"\n{'='*85}")
+    print(f"Total days with 15m breakout : {len(breakout_days)}")
+    print(f"{'='*85}\n")
 
     broker.disconnect()
 

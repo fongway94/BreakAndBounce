@@ -7,6 +7,10 @@ Includes:
 - Force close at 16:00 ET (as per video)
 - Multiple symbols testing
 """
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from broker_moomoo import MoomooBroker
 from strategy import generate_signal, calculate_take_profit

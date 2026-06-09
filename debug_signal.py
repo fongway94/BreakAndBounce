@@ -16,7 +16,7 @@ from strategy import (
     align_timeframes,
     get_us_eastern_time
 )
-from config import USE_REAL_PAPER_TRADING, SYMBOLS
+from config import USE_REAL_PAPER_TRADING
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -100,5 +100,9 @@ def debug_symbol(symbol="AAPL"):
 
 
 if __name__ == "__main__":
-    # You can change the symbol here
-    debug_symbol("AAPL")
+    from config import SYMBOLS
+
+    print(f"Checking all {len(SYMBOLS)} symbols in your config...\n")
+
+    for symbol in SYMBOLS:
+        debug_symbol(symbol)

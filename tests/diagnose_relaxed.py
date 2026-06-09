@@ -36,15 +36,15 @@ def has_preceding_move_relaxed(df_5m, direction, lookback=3):
 
 
 def check_reversal_relaxed(df_5m, direction, level):
-    """Relaxed reversal check with higher tolerance"""
+    """Further relaxed reversal check"""
     if len(df_5m) < 4:
         return False
 
     current = df_5m.iloc[-1]
     previous = df_5m.iloc[-2]
 
-    # Increased tolerance from 0.15% to 0.4%
-    tolerance = level * 0.004
+    # Even higher tolerance (0.5%)
+    tolerance = level * 0.005
     near_level = (abs(current['low'] - level) < tolerance or
                   abs(current['high'] - level) < tolerance or
                   abs(current['close'] - level) < tolerance)
@@ -55,7 +55,6 @@ def check_reversal_relaxed(df_5m, direction, level):
     if not has_preceding_move_relaxed(df_5m, direction):
         return False
 
-    # Basic pattern detection (simplified)
     body = abs(current['close'] - current['open'])
     if body == 0:
         return False
@@ -64,10 +63,11 @@ def check_reversal_relaxed(df_5m, direction, level):
     upper_wick = current['high'] - max(current['open'], current['close'])
 
     if direction == "bullish":
-        if lower_wick > 2 * body:  # Hammer-like
+        # Relaxed hammer condition
+        if lower_wick > 1.5 * body:
             return {"pattern": "hammer_relaxed", "entry": current['close'], "sl_ref": current['low']}
     else:
-        if upper_wick > 2 * body:  # Inverted Hammer-like
+        if upper_wick > 1.5 * body:
             return {"pattern": "inv_hammer_relaxed", "entry": current['close'], "sl_ref": current['high']}
 
     return False

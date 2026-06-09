@@ -1,6 +1,10 @@
 """
 Diagnostic Script - Why is the 5-minute reversal being rejected?
 """
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from broker_moomoo import MoomooBroker
 from strategy import (

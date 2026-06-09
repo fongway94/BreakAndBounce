@@ -7,6 +7,10 @@ It shows:
 - 15-minute breakout status
 - 5-minute reversal candle check
 """
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from broker_moomoo import MoomooBroker
 from strategy import (

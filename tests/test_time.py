@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from strategy import get_us_eastern_time, is_within_trading_window
 from datetime import time
 

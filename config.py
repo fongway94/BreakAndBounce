@@ -10,9 +10,10 @@ USE_REAL_PAPER_TRADING = True        # Must be True for paper trading (was False
 # ==================== SYMBOLS ====================
 SYMBOLS = [
     # US Tech Stocks
-    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD",
+    #"AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD",
     # Other Popular Stocks
-    "JPM", "V", "MA", "NFLX", "DIS",
+    #"JPM", "V", "MA", "NFLX", "DIS",
+    "GOOGL",
 ]
 
 # ==================== TIME SETTINGS (US Eastern) ====================

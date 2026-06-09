@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from config import USE_REAL_PAPER_TRADING
 from moomoo import *
 

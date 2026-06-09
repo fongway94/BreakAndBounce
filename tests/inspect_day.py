@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 SYMBOL = "TSLA"
-TARGET_DATE = "2026-03-18"   # Change this to any breakout day from the diagnostic
+TARGET_DATE = "2026-03-23"   # Change this to any breakout day from the diagnostic
 
 def inspect_day():
     print(f"\n{'='*80}")

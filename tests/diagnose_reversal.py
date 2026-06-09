@@ -15,8 +15,12 @@ Shows why no setups are being found (especially breakout detection)
 Diagnostic Script - Check data availability per day
 """
 
+"""
+Diagnostic Script - Check daily + 15m data availability
+"""
+
 from broker_moomoo import MoomooBroker
-from strategy import get_previous_day_range, has_recent_breakout
+from strategy import get_previous_day_range
 from config import USE_REAL_PAPER_TRADING
 from datetime import datetime, timedelta
 
@@ -24,9 +28,9 @@ SYMBOL = "TSLA"
 DAYS = 60
 
 def diagnose():
-    print(f"\n{'='*75}")
+    print(f"\n{'='*80}")
     print(f"DATA AVAILABILITY DIAGNOSTIC — {SYMBOL}")
-    print(f"{'='*75}\n")
+    print(f"{'='*80}\n")
 
     broker = MoomooBroker(use_real_paper=USE_REAL_PAPER_TRADING)
     if not broker.connect():
@@ -44,7 +48,7 @@ def diagnose():
         return
 
     trading_days = df_daily['time_key'].dt.date.unique()
-    print(f"Total trading days: {len(trading_days)}\n")
+    print(f"Total trading days in period: {len(trading_days)}\n")
 
     low_data_days = 0
     good_data_days = 0
@@ -53,20 +57,21 @@ def diagnose():
         day_daily = df_daily[df_daily['time_key'].dt.date == day]
         day_15m = df_15m[df_15m['time_key'].dt.date == day]
 
-        candle_count = len(day_15m)
+        daily_count = len(day_daily)
+        m15_count = len(day_15m)
 
-        if len(day_daily) < 2 or candle_count < 5:
+        if daily_count < 2 or m15_count < 5:
             low_data_days += 1
-            print(f"[{day}] 15m candles: {candle_count:2}  ← LOW DATA")
+            print(f"[{day}] Daily: {daily_count:2} | 15m: {m15_count:2}   ← LOW DATA")
         else:
             good_data_days += 1
-            if candle_count < 20:   # Only print if not full day
-                print(f"[{day}] 15m candles: {candle_count:2}")
+            if daily_count < 3 or m15_count < 20:
+                print(f"[{day}] Daily: {daily_count:2} | 15m: {m15_count:2}")
 
-    print(f"\n{'='*75}")
+    print(f"\n{'='*80}")
     print(f"Days with good data   : {good_data_days}")
     print(f"Days with low data    : {low_data_days}")
-    print(f"{'='*75}\n")
+    print(f"{'='*80}\n")
 
     broker.disconnect()
 

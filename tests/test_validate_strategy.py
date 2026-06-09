@@ -18,7 +18,7 @@ from config import USE_REAL_PAPER_TRADING, SYMBOLS
 from datetime import datetime, timedelta, time as dt_time
 import pandas as pd
 
-DAYS = 60
+DAYS = 180
 RISK_REWARD = 2.0
 MARKET_CLOSE = dt_time(16, 0)
 

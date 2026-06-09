@@ -13,7 +13,7 @@ SYMBOLS = [
     #"AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD",
     # Other Popular Stocks
     #"JPM", "V", "MA", "NFLX", "DIS",
-    "AMD",
+    "NVDA",
 ]
 
 # ==================== TIME SETTINGS (US Eastern) ====================

@@ -5,11 +5,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 """
 Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
-This matches the exact period shown in the video.
-"""
-
-"""
-Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
 Matches the exact example shown in the video (March 30-31, 2026)
 """
 

@@ -7,49 +7,48 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
 Matches the exact example shown in the video (March 30-31, 2026)
 """
+"""
+Break & Bounce Backtest - Exact Video Example Dates
+Focus: March 30-31, 2026 (NFLX)
+"""
 
 from broker_moomoo import MoomooBroker
-from strategy import generate_signal, calculate_take_profit
+from strategy import (
+    get_previous_day_range,
+    has_recent_breakout,
+    check_reversal_entry,
+    align_timeframes
+)
 from config import USE_REAL_PAPER_TRADING
 from datetime import datetime, timedelta, time as dt_time
 import pandas as pd
 
 SYMBOL = "NFLX"
-START_DATE = "2026-03-01"      # Start of March 2026
-END_DATE = "2026-04-10"        # Covers the video example period
-RISK_REWARD = 2.0
+START_DATE = "2026-03-25"      # A few days before
+END_DATE = "2026-04-05"        # A few days after
 
 def run_backtest():
-    print(f"\n{'='*85}")
-    print(f"BACKTEST — Break & Bounce Strategy (NFLX)")
-    print(f"Period: {START_DATE} to {END_DATE}")
-    print(f"Focus: March 30-31, 2026 (Exact example from the video)")
-    print(f"{'='*85}\n")
+    print(f"\n{'='*90}")
+    print(f"BACKTEST — Break & Bounce (NFLX) | Exact Video Period")
+    print(f"Date Range: {START_DATE} to {END_DATE}")
+    print(f"{'='*90}\n")
 
     broker = MoomooBroker(use_real_paper=USE_REAL_PAPER_TRADING)
     if not broker.connect():
-        print("Failed to connect to Moomoo openD")
+        print("Failed to connect")
         return
 
     df_daily = broker.get_historical_data(SYMBOL, START_DATE, END_DATE, freq="1D")
     df_15m = broker.get_historical_data(SYMBOL, START_DATE, END_DATE, freq="15")
     df_5m = broker.get_historical_data(SYMBOL, START_DATE, END_DATE, freq="5")
 
-    if df_daily.empty or df_15m.empty or df_5m.empty:
-        print("Insufficient data")
-        return
-
-    print(f"Data loaded: {len(df_daily)} daily | {len(df_15m)} 15m | {len(df_5m)} 5m\n")
-
     trading_days = df_daily['time_key'].dt.date.unique()
-    trades = []
+    print(f"Total trading days in range: {len(trading_days)}\n")
+
+    trades_found = 0
     market_open = dt_time(9, 30)
 
-    for i, day in enumerate(trading_days):
-        if i < 1:
-            continue
-
-        # Fixed: Use full daily data up to current day
+    for day in trading_days:
         day_daily = df_daily[df_daily['time_key'].dt.date <= day]
         day_15m = df_15m[df_15m['time_key'].dt.date == day]
         day_5m = df_5m[df_5m['time_key'].dt.date == day]
@@ -57,60 +56,35 @@ def run_backtest():
         if len(day_daily) < 2 or len(day_15m) < 5 or len(day_5m) < 10:
             continue
 
-        signal = generate_signal(day_daily, day_15m, day_5m, market_open)
+        prev_high, prev_low = get_previous_day_range(day_daily)
+        if prev_high is None:
+            continue
 
-        if signal:
-            entry = signal["entry"]
-            stop_loss = signal["stop_loss"]
-            take_profit = calculate_take_profit(entry, signal["signal"], stop_loss, RISK_REWARD)
-            direction = signal["signal"]
+        direction = has_recent_breakout(day_15m, prev_high, prev_low)
+        if direction is None:
+            continue
 
-            # Simulate outcome
-            future_5m = df_5m[df_5m['time_key'].dt.date >= day]
-            outcome = "open"
+        level = prev_high if direction == "bullish" else prev_low
+        _, _, aligned_5m = align_timeframes(day_daily, day_15m, day_5m)
 
-            for idx in range(len(future_5m)):
-                candle = future_5m.iloc[idx]
-                if direction == "buy":
-                    if candle['low'] <= stop_loss:
-                        outcome = "loss"
-                        break
-                    if candle['high'] >= take_profit:
-                        outcome = "win"
-                        break
-                else:
-                    if candle['high'] >= stop_loss:
-                        outcome = "loss"
-                        break
-                    if candle['low'] <= take_profit:
-                        outcome = "win"
-                        break
+        if aligned_5m is None or len(aligned_5m) < 5:
+            continue
 
-            trades.append({
-                "date": day,
-                "direction": direction,
-                "entry": entry,
-                "outcome": outcome
-            })
+        # Check for reversal
+        reversal = check_reversal_entry(aligned_5m, direction, level)
+
+        print(f"[{day}] 15m Breakout: {direction.upper()} | Level: {level:.2f} | "
+              f"Reversal Detected: {bool(reversal)}")
+
+        if reversal:
+            trades_found += 1
+            print(f"   >>> VALID SETUP FOUND: {reversal['pattern']}")
+
+    print(f"\n{'='*90}")
+    print(f"Total valid setups found: {trades_found}")
+    print(f"{'='*90}\n")
 
     broker.disconnect()
-
-    # Results
-    total = len(trades)
-    wins = sum(1 for t in trades if t["outcome"] == "win")
-    losses = sum(1 for t in trades if t["outcome"] == "loss")
-    opens = sum(1 for t in trades if t["outcome"] == "open")
-    win_rate = (wins / total * 100) if total > 0 else 0
-
-    print(f"\n{'='*85}")
-    print(f"BACKTEST RESULTS — NFLX (March 2026)")
-    print(f"{'='*85}")
-    print(f"Total Trades Detected : {total}")
-    print(f"Wins (TP Hit)         : {wins}")
-    print(f"Losses (SL Hit)       : {losses}")
-    print(f"Still Open            : {opens}")
-    print(f"Win Rate              : {win_rate:.1f}%")
-    print(f"{'='*85}\n")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 """
 Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
 This matches the exact period shown in the video.

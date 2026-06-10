@@ -1,22 +1,6 @@
 """
-Improved Simplified Backtest for Break & Bounce Strategy
-
-Includes:
-- First 2.5 hours time window
-- Better trade simulation
-- Force close at 16:00 ET (as per video)
-- Multiple symbols testing
-"""
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parent.parent))
-
-"""
-Improved Break & Bounce Backtest
-- Fixed daily data handling
-- Relaxed reversal rules
-- Tests on NFLX (same stock as video)
+Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
+This matches the exact period shown in the video.
 """
 
 from broker_moomoo import MoomooBroker
@@ -25,25 +9,15 @@ from config import USE_REAL_PAPER_TRADING
 from datetime import datetime, timedelta, time as dt_time
 import pandas as pd
 
-SYMBOL = "NFLX"          # Same stock used in the video
-DAYS = 180
+SYMBOL = "NFLX"
+START_DATE = "2026-03-01"     # Start of March 2026
+END_DATE = "2026-04-05"       # Covers the examples shown in the video
 RISK_REWARD = 2.0
-
-def has_preceding_move_relaxed(df_5m, direction, lookback=3):
-    """Relaxed: only needs at least 1 candle in the correct direction"""
-    if len(df_5m) < lookback + 1:
-        return False
-    recent = df_5m.iloc[-(lookback + 1):-1]
-    if direction == "bullish":
-        return sum(1 for _, c in recent.iterrows() if c['close'] < c['open']) >= 1
-    else:
-        return sum(1 for _, c in recent.iterrows() if c['close'] > c['open']) >= 1
-
 
 def run_backtest():
     print(f"\n{'='*80}")
-    print(f"IMPROVED BACKTEST — Break & Bounce Strategy")
-    print(f"Symbol: {SYMBOL} | Period: Last {DAYS} days (~6 months)")
+    print(f"BACKTEST — Break & Bounce Strategy (NFLX)")
+    print(f"Period: {START_DATE} to {END_DATE} (Matches Video Example)")
     print(f"{'='*80}\n")
 
     broker = MoomooBroker(use_real_paper=USE_REAL_PAPER_TRADING)
@@ -51,12 +25,9 @@ def run_backtest():
         print("Failed to connect to Moomoo openD")
         return
 
-    end_date = datetime.now().strftime("%Y-%m-%d")
-    start_date = (datetime.now() - timedelta(days=DAYS)).strftime("%Y-%m-%d")
-
-    df_daily = broker.get_historical_data(SYMBOL, start_date, end_date, freq="1D")
-    df_15m = broker.get_historical_data(SYMBOL, start_date, end_date, freq="15")
-    df_5m = broker.get_historical_data(SYMBOL, start_date, end_date, freq="5")
+    df_daily = broker.get_historical_data(SYMBOL, START_DATE, END_DATE, freq="1D")
+    df_15m = broker.get_historical_data(SYMBOL, START_DATE, END_DATE, freq="15")
+    df_5m = broker.get_historical_data(SYMBOL, START_DATE, END_DATE, freq="5")
 
     if df_daily.empty or df_15m.empty or df_5m.empty:
         print("Insufficient data")
@@ -72,7 +43,7 @@ def run_backtest():
         if i < 1:
             continue
 
-        # Use full daily data up to current day (fixed issue)
+        # Fixed: Use full daily data up to current day
         day_daily = df_daily[df_daily['time_key'].dt.date <= day]
         day_15m = df_15m[df_15m['time_key'].dt.date == day]
         day_5m = df_5m[df_5m['time_key'].dt.date == day]
@@ -80,7 +51,6 @@ def run_backtest():
         if len(day_daily) < 2 or len(day_15m) < 5 or len(day_5m) < 10:
             continue
 
-        # Generate signal (still respects 2.5h window)
         signal = generate_signal(day_daily, day_15m, day_5m, market_open)
 
         if signal:
@@ -127,7 +97,7 @@ def run_backtest():
     win_rate = (wins / total * 100) if total > 0 else 0
 
     print(f"\n{'='*80}")
-    print(f"BACKTEST RESULTS — {SYMBOL}")
+    print(f"BACKTEST RESULTS — NFLX (March 2026)")
     print(f"{'='*80}")
     print(f"Total Trades Detected : {total}")
     print(f"Wins (TP Hit)         : {wins}")

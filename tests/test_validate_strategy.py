@@ -8,6 +8,11 @@ Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
 This matches the exact period shown in the video.
 """
 
+"""
+Improved Break & Bounce Backtest - Focused on March 2026 (NFLX)
+Matches the exact example shown in the video (March 30-31, 2026)
+"""
+
 from broker_moomoo import MoomooBroker
 from strategy import generate_signal, calculate_take_profit
 from config import USE_REAL_PAPER_TRADING
@@ -15,15 +20,16 @@ from datetime import datetime, timedelta, time as dt_time
 import pandas as pd
 
 SYMBOL = "NFLX"
-START_DATE = "2026-03-04"     # Start of March 2026
-END_DATE = "2026-03-05"       # Covers the examples shown in the video
+START_DATE = "2026-03-01"      # Start of March 2026
+END_DATE = "2026-04-10"        # Covers the video example period
 RISK_REWARD = 2.0
 
 def run_backtest():
-    print(f"\n{'='*80}")
+    print(f"\n{'='*85}")
     print(f"BACKTEST — Break & Bounce Strategy (NFLX)")
-    print(f"Period: {START_DATE} to {END_DATE} (Matches Video Example)")
-    print(f"{'='*80}\n")
+    print(f"Period: {START_DATE} to {END_DATE}")
+    print(f"Focus: March 30-31, 2026 (Exact example from the video)")
+    print(f"{'='*85}\n")
 
     broker = MoomooBroker(use_real_paper=USE_REAL_PAPER_TRADING)
     if not broker.connect():
@@ -101,15 +107,15 @@ def run_backtest():
     opens = sum(1 for t in trades if t["outcome"] == "open")
     win_rate = (wins / total * 100) if total > 0 else 0
 
-    print(f"\n{'='*80}")
+    print(f"\n{'='*85}")
     print(f"BACKTEST RESULTS — NFLX (March 2026)")
-    print(f"{'='*80}")
+    print(f"{'='*85}")
     print(f"Total Trades Detected : {total}")
     print(f"Wins (TP Hit)         : {wins}")
     print(f"Losses (SL Hit)       : {losses}")
     print(f"Still Open            : {opens}")
     print(f"Win Rate              : {win_rate:.1f}%")
-    print(f"{'='*80}\n")
+    print(f"{'='*85}\n")
 
 
 if __name__ == "__main__":

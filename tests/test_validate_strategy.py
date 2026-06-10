@@ -15,8 +15,8 @@ from datetime import datetime, timedelta, time as dt_time
 import pandas as pd
 
 SYMBOL = "NFLX"
-START_DATE = "2026-03-12"     # Start of March 2026
-END_DATE = "2026-03-14"       # Covers the examples shown in the video
+START_DATE = "2026-03-04"     # Start of March 2026
+END_DATE = "2026-03-05"       # Covers the examples shown in the video
 RISK_REWARD = 2.0
 
 def run_backtest():
